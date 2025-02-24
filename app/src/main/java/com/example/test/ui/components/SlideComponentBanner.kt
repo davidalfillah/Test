@@ -40,11 +40,13 @@ fun SlideComponentBanner(
 
     // Ukuran dinamis berdasarkan layar
     val screenWidth = configuration.screenWidthDp.dp
-    val bannerWidth = screenWidth * 0.9f // Banner 85% dari lebar layar
+    val bannerWidth = screenWidth * 0.85f // Banner 85% dari lebar layar
     val bannerHeight = bannerWidth * 0.5f // Rasio 16:9
 
     // Duplikasi item pertama di akhir list agar transisi lebih mulus
-    val loopItems = items + items.first()
+    val loopItems = if (items.isNotEmpty()) items + items.first() else items
+
+    val flingBehavior = rememberSnapperFlingBehavior(lazyListState)
 
     LaunchedEffect(Unit) {
         while (isActive) { // Loop berjalan terus
@@ -52,31 +54,36 @@ fun SlideComponentBanner(
 
             val nextIndex = lazyListState.firstVisibleItemIndex + 1
 
-            if (nextIndex < loopItems.size) {
+            if (loopItems.isNotEmpty() && nextIndex < loopItems.size) {
                 lazyListState.animateScrollToItem(nextIndex)
-            }
 
-            // Jika sudah mencapai item terakhir (duplikat), langsung lompat ke awal
-            if (nextIndex == loopItems.size - 1) {
-                delay(scrollInterval) // Kasih delay sejenak agar tidak terlihat melompat
-                lazyListState.scrollToItem(0)
+                // Jika sudah mencapai item terakhir (duplikat), langsung lompat ke awal
+                if (nextIndex == loopItems.size - 1) {
+                    delay(scrollInterval) // Kasih delay sejenak agar tidak terlihat melompat
+                    lazyListState.scrollToItem(0)
+                }
+            }else if(loopItems.isNotEmpty()){
+                lazyListState.scrollToItem(0) // Reset ke awal jika sudah di akhir dan loop terus
             }
         }
     }
 
+
     LazyRow(
         state = lazyListState,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp), // Jarak antar item
-        contentPadding = PaddingValues(horizontal = 24.dp), // Padding kiri & kanan
-        flingBehavior = rememberSnapperFlingBehavior(lazyListState)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start), // Tetap rata kiri dengan jarak antar item
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp),
+        flingBehavior = flingBehavior // Snapper tetap digunakan
     ) {
         items(loopItems) { item ->
             Image(
                 painter = painterResource(id = item.first),
                 contentDescription = "Banner Image",
                 modifier = Modifier
-                    .width(bannerWidth)  // Ukuran dinamis
+                    .width(bannerWidth)
                     .height(bannerHeight)
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { onItemClick(item.second) },
