@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "873667489538",
+    "project_id": "kta-grib",
+    "storage_bucket": "kta-grib.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873667489538:android:9cfeee677530a2430fdc1b",
+        "android_client_info": {
+          "package_name": "com.example.test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEkUqgsWZkKtZF0eovsFNM2pC_QM_YnyM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873667489538:android:d5dc025241becaa40fdc1b",
+        "android_client_info": {
+          "package_name": "com.hellobrib"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEkUqgsWZkKtZF0eovsFNM2pC_QM_YnyM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
