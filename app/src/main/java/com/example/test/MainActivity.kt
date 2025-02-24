@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.example.test.ui.MainScreen
 import com.example.test.ui.screens.User
@@ -37,9 +38,20 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+
+
 
 
 class AuthRepository {
@@ -54,6 +66,39 @@ class AuthRepository {
 
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user
+
+    val deviceInfo = "${Build.MANUFACTURER} ${Build.MODEL}"
+
+    fun getPublicIpAddress(): String {
+        return try {
+            val client = OkHttpClient()
+            val request = Request.Builder().url("https://api64.ipify.org?format=json").build()
+            val response = client.newCall(request).execute()
+            val json = JSONObject(response.body?.string() ?: "{}")
+            json.getString("ip")
+        } catch (e: Exception) {
+            "0.0.0.0"
+        }
+    }
+
+    // Menyimpan sesi ke Firestore
+    private suspend fun saveSession(user: FirebaseUser) {
+        val sessionData = mapOf(
+            "user_id" to user.uid,
+            "device" to deviceInfo,
+            "ip_address" to getPublicIpAddress(),
+            "login_time" to System.currentTimeMillis(),
+            "expires_at" to System.currentTimeMillis() + (24 * 60 * 60 * 1000) // 24 jam sesi
+        )
+
+        firestore.collection("sessions").document(user.uid)
+            .set(sessionData, SetOptions.merge()).await()
+    }
+
+    // Menghapus sesi saat logout
+    private suspend fun deleteSession(userId: String) {
+        firestore.collection("sessions").document(userId).delete().await()
+    }
 
 
     fun fetchUserData() {
@@ -124,19 +169,46 @@ class AuthRepository {
         auth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    _authState.value = auth.currentUser
-                    checkUserExists(
-                        onSuccess = { isProfileComplete ->
-                            fetchUserData() // Tambahkan ini untuk memperbarui user setelah login
-                            onSuccess(isProfileComplete)
-                        },
-                        onError = onError
-                    )
+                    val firebaseUser = auth.currentUser
+                    _authState.value = firebaseUser
+
+                    if (firebaseUser == null) {
+                        onError("User tidak ditemukan setelah login")
+                        return@addOnCompleteListener
+                    }
+
+                    // 🔹 Gunakan Coroutine untuk operasi async Firestore
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val currentSessionId = checkSession(firebaseUser.uid)
+                            if (currentSessionId != null) {
+                                onError("Akun sedang digunakan di perangkat lain")
+                                return@launch
+                            }
+
+                            saveSession(firebaseUser) // ✅ Simpan sesi ke Firestore
+                            checkUserExists(
+                                onSuccess = { isProfileComplete ->
+                                    fetchUserData() // ✅ Ambil data user dari Firestore
+                                    onSuccess(isProfileComplete) // 🔹 Pastikan ini dipanggil terakhir
+                                },
+                                onError = onError
+                            )
+                        } catch (e: Exception) {
+                            onError(e.localizedMessage ?: "Terjadi kesalahan saat login")
+                        }
+                    }
                 } else {
-                    onError(task.exception?.message ?: "Login gagal")
+                    onError(task.exception?.localizedMessage ?: "Login gagal")
                 }
             }
     }
+
+    suspend fun checkSession(userId: String): String? {
+        val sessionDoc = firestore.collection("sessions").document(userId).get().await()
+        return sessionDoc.getString("sessionId") // 🔹 Jika null, berarti tidak ada session aktif
+    }
+
 
 
     /**
@@ -176,11 +248,17 @@ class AuthRepository {
     /**
      * Logout pengguna
      */
-    fun logout() {
+
+    suspend fun logout() {
+        val userId = _user.value?.uid ?: return // Jika user null, tidak perlu lanjut
+
+        deleteSession(userId) // Hapus sesi dari Firestore
         auth.signOut()
+
         _authState.value = null
         _user.value = null
     }
+
 
     /**
      * Load user saat aplikasi dibuka kembali
@@ -203,7 +281,11 @@ class AuthViewModel : ViewModel() {
         authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
     }
 
-    private fun fetchUserData() {
+    fun resendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
+        authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
+    }
+
+    fun fetchUserData() {
         authRepository.fetchUserData()
     }
 
@@ -212,8 +294,12 @@ class AuthViewModel : ViewModel() {
         authRepository.verifyOtp(otpCode, onSuccess, onError)
     }
 
-    fun logout() {
-        authRepository.logout()
+    fun logout(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            authRepository.logout() // Pastikan repository menangani sign out
+            delay(2000) // Simulasi animasi loading logout
+            onComplete() // Callback untuk pindah ke halaman login
+        }
     }
 }
 
@@ -245,7 +331,6 @@ fun DashboardScreen(navController: NavHostController, authViewModel: AuthViewMod
                 Button(onClick = { navController.navigate("admin") }) { Text("Go to Admin") }
             }
             Button(onClick = {
-                authViewModel.logout()
                 navController.navigate("home")
             }) {
                 Text("Logout")

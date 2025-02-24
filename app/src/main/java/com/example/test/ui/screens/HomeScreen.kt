@@ -1,5 +1,6 @@
 package com.example.test.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,6 +58,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 import com.example.test.AuthViewModel
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentCharity
@@ -65,6 +68,8 @@ import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.charitys
 import com.example.test.ui.dataTest.products
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 data class Donation(
     val image: Int,       // ID Gambar dari drawable
@@ -92,6 +97,12 @@ data class User(
 @Composable
 fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, authViewModel: AuthViewModel) {
     val user by authViewModel.user.collectAsState()
+
+
+    Log.d("isProfileComplete", user.toString())
+
+
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,40 +137,42 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
                 bottom = paddingValues.calculateBottomPadding()) // Hindari tumpang tindih BottomNav)
             .verticalScroll(rememberScrollState())
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(0.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
-        ) {
-            Box(
+        if(user != null){
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-                        Column {
-                            Text(text = "Iuran Anggota Bulanan", fontSize = 14.sp, color = Color.White)
-                            Text(text = "Rp.10.000", fontWeight = FontWeight.Bold, fontSize = 36.sp)
-                            Text(text = "Iuran bulan April - 2025", fontSize = 14.sp, color = Color.White)
-                        }
-                        Column {
-                            Button(
-                                onClick = {  },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
-                                    contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
-                                ),
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
+                            Column {
+                                Text(text = "Iuran Anggota Bulanan", fontSize = 14.sp, color = Color.White)
+                                Text(text = "Rp.10.000", fontWeight = FontWeight.Bold, fontSize = 36.sp)
+                                Text(text = "Iuran bulan April - 2025", fontSize = 14.sp, color = Color.White)
+                            }
+                            Column {
+                                Button(
+                                    onClick = {  },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
+                                        contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
+                                    ),
 
 
-                            ) {
-                                Text(text = "Bayar")
+                                    ) {
+                                    Text(text = "Bayar")
+                                }
                             }
                         }
+
+
                     }
-
-
                 }
             }
         }
@@ -172,141 +185,121 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
                 )
             {
                 Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-                    Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-                        Row(horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                    if(user != null){
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .padding(top = 16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween // Perbaikan: Ubah dari SpaceBetween ke Start
                         ) {
-                            AsyncImage(
-                                model = user?.profilePicUrl,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray),
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = user?.name ?: "User", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f, false) // Perbaikan: Memberi ruang agar tombol tidak terdesak
+                            ) {
+                                AsyncImage(
+                                    model = user?.profilePicUrl,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Gray),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = user?.name ?: "User",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan teks tidak memakan seluruh ruang
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp)) // Perbaikan: Tambahkan jarak agar tidak terlalu rapat
+
+                            Button(
+                                onClick = { },
+                                modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan tombol tidak dipaksa melebar
+                            ) {
+                                Text(
+                                    text = "Ajak Teman",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.wrapContentWidth()
+                                )
+                            }
                         }
-                        Button(
-                            onClick = {  },
-                        ) {
-                            Text(text = "Ajak Teman",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis)
+
+
+                    }else{
+                        Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween){
+                            Text(text = "Anda Belum Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Button(
+                                onClick = { navController.navigate("login") },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = Color.White
+                                ),
+                            ) {
+                                Text(text = "Log In")
+                            }
                         }
                     }
-                    Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                navController.navigate("news")
-                            }
-                        ) {
-                            Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        val items = listOf(
+                            "News" to R.drawable.baseline_newspaper_24,
+                            "UMKM" to R.drawable.baseline_storefront_24,
+                            "Gabung GRIB" to R.drawable.baseline_card_membership_24,
+                            "Donasi" to R.drawable.baseline_wallet_24
+                        )
+
+                        items.forEachIndexed { index, (label, icon) ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
-                                    .size(70.dp) // Ukuran tombol
-                                    .background(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
-                                    .padding(2.dp), // Latar belakang bulat
-                                contentAlignment = Alignment.Center, // Memastikan ikon di tengah
+                                    .weight(1f)
+                                    .clickable {
+                                        when (index) {
+                                            0 -> navController.navigate("news")
+                                            2 -> navController.navigate("status")
+                                            // Tambahkan navigasi sesuai kebutuhan
+                                        }
+                                    }
                             ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_newspaper_24),
-                                    contentDescription = "News",
-                                    modifier = Modifier.size(40.dp),
-                                    tint = Color.White // Warna ikon agar kontras
+                                Box(
+                                    modifier = Modifier
+                                        .size(70.dp) // Ukuran tombol
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(2.dp), // Latar belakang bulat
+                                    contentAlignment = Alignment.Center // Memastikan ikon di tengah
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(id = icon),
+                                        contentDescription = label,
+                                        modifier = Modifier.size(40.dp),
+                                        tint = Color.White // Warna ikon agar kontras
+                                    )
+                                }
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
-                            Text(
-                                text = "News",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black, // Sesuaikan warna teks
-                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
-                            )
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(70.dp) // Ukuran tombol
-                                    .background(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
-                                    .padding(2.dp), // Latar belakang bulat
-                                contentAlignment = Alignment.Center, // Memastikan ikon di tengah
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_storefront_24),
-                                    contentDescription = "UMKM",
-                                    modifier = Modifier.size(40.dp),
-                                    tint = Color.White // Warna ikon agar kontras
-                                )
-                            }
-                            Text(
-                                text = "UMKM",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black, // Sesuaikan warna teks
-                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
-                            )
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                navController.navigate("status")
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(70.dp) // Ukuran tombol
-                                    .background(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
-                                    .padding(2.dp), // Latar belakang bulat
-                                contentAlignment = Alignment.Center, // Memastikan ikon di tengah
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_card_membership_24),
-                                    contentDescription = "Gabung GRIB",
-                                    modifier = Modifier.size(40.dp),
-                                    tint = Color.White // Warna ikon agar kontras
-                                )
-                            }
-                            Text(
-                                text = "Gabung GRIB",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black, // Sesuaikan warna teks
-                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
-                            )
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                // Tambahkan aksi saat tombol diklik
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(70.dp) // Ukuran tombol
-                                    .background(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
-                                    .padding(2.dp), // Latar belakang bulat
-                                contentAlignment = Alignment.Center, // Memastikan ikon di tengah
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_wallet_24),
-                                    contentDescription = "Donasi",
-                                    modifier = Modifier.size(40.dp),
-                                    tint = Color.White // Warna ikon agar kontras
-                                )
-                            }
-                            Text(
-                                text = "Donasi",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black, // Sesuaikan warna teks
-                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
-                            )
                         }
                     }
                 }

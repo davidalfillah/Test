@@ -1,51 +1,28 @@
 package com.example.test.ui
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.os.Build
-import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.view.WindowCompat
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.test.AdminScreen
 import com.example.test.AuthViewModel
 import com.example.test.DashboardScreen
@@ -61,23 +38,13 @@ import com.example.test.ui.screens.OtpScreen
 import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.test.ui.screens.SuccessScreen
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
-    val systemUiController = rememberSystemUiController()
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: "home"
-    val showBackButton = currentRoute in listOf("profile", "login", "register", "settings", "details", "news_detail/{newsId}", "news", "status") // Route yang butuh back button
-    val titleMap = mapOf(
-        "news" to "News",
-        "news_detail/{newsId}" to "Detail Berita",
-        "shop" to "Toko",
-        "status" to ""
-    )
 
     setStatusBarColor(
         color = when (currentRoute) {
@@ -91,6 +58,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
         useDarkIcons = when (currentRoute) { // Gunakan warna ikon status bar yang sesuai
             "home" -> false
             "shopping" -> true
+            "login" -> true
             "chat" -> false
             "news_detail/{newsId}" -> false
             "news" -> false
@@ -100,20 +68,26 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
         }
     )
 
-
-
-    val titleHeader = titleMap[currentRoute] ?: "Detail"
-
     Scaffold(
         bottomBar = {
-            if (currentRoute !in listOf("login", "register", "news", "status", "news_detail/{newsId}")) {
+            if (currentRoute !in listOf(
+                    "login",
+                    "register",
+                    "news",
+                    "status",
+                    "success?nextScreen={nextScreen}",
+                    "profile_setup",
+                    "news_detail/{newsId}",
+                    "otp_screen/{phoneNumber}"))
+            {
                 BottomNavigationBar(navController)
             }
         }
     ) { PaddingValues ->
         NavHost(
             navController = navController,
-            startDestination = "home"
+            startDestination = "home",
+
         ) {
             composable("news_detail/{newsId}") { backStackEntry ->
                 val newsId = backStackEntry.arguments?.getString("newsId") ?: "1"
@@ -122,20 +96,28 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
             composable("home") { HomeScreen(navController,
                 PaddingValues, authViewModel) }
             composable("status") { StatusScreen(navController) }
-            composable("profile_setup") { ProfileSetupScreen(navController, authViewModel) }
+            composable("profile_setup") { ProfileSetupScreen(navController, authViewModel, paddingValues = PaddingValues) }
+            composable(
+                "success?nextScreen={nextScreen}",
+                arguments = listOf(navArgument("nextScreen") { defaultValue = "home" })
+            ) { backStackEntry ->
+                val nextScreen = backStackEntry.arguments?.getString("nextScreen") ?: "home"
+                SuccessScreen(navController, nextScreen)
+            }
             composable("news") { NewsScreen(navController, paddingValues = PaddingValues) }
             composable("shopping") { ShoppingScreen(navController, paddingValues = PaddingValues) }
             composable("chat") { ChatsScreen(navController, paddingValues = PaddingValues) }
-            composable("otp_screen") { OtpScreen(navController, authViewModel) }
-            composable("login") { LoginScreen(navController, authViewModel) }
+            composable(
+                "otp_screen/{phoneNumber}",
+                arguments = listOf(navArgument("phoneNumber") { var type = NavType.StringType })
+            ) { backStackEntry ->
+                val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
+                OtpScreen(navController, phoneNumber, authViewModel, paddingValues = PaddingValues)
+            }
+            composable("login") { LoginScreen(navController, authViewModel, paddingValues = PaddingValues) }
             composable("dashboard") { DashboardScreen(navController, authViewModel) }
             composable("admin") { AdminScreen(navController, authViewModel) }
-            composable("account") { AccountScreen(authViewModel,
-                 PaddingValues,
-                onLoginClick = { navController.navigate("login") },
-                onRegisterClick = { navController.navigate("register") },
-                onProfileClick = { navController.navigate("profile") },
-            ) }
+            composable("account") { AccountScreen(navController, authViewModel, PaddingValues) }
         }
     }
 
@@ -171,17 +153,6 @@ fun BottomNavigationBar(navController: NavHostController) {
 
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 
-@Composable
-fun EmptyScreen(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text(title)
-    }
-}
 
 @Preview(showBackground = true)
 @Composable

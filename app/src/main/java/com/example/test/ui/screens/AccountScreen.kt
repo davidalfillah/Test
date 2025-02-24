@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,8 +42,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,14 +60,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.AuthViewModel
 import com.example.test.R
+import com.example.test.ui.components.LogoutDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountScreen(authViewModel: AuthViewModel, paddingValues: PaddingValues, onRegisterClick: () -> Unit, onLoginClick: () -> Unit, onProfileClick: () -> Unit) {
+fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel, paddingValues: PaddingValues, ) {
     val user by authViewModel.user.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     Log.d("user", user.toString())
     Scaffold(
         topBar = {
@@ -73,12 +86,14 @@ fun AccountScreen(authViewModel: AuthViewModel, paddingValues: PaddingValues, on
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = { // Tambahkan aksi di kanan atas
-                    IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.baseline_qr_code_scanner_24), // Ikon lonceng
-                            contentDescription = "QR Anggota",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                    if(user != null){
+                        IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.baseline_qr_code_scanner_24), // Ikon lonceng
+                                contentDescription = "QR Anggota",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             )
@@ -119,43 +134,46 @@ fun AccountScreen(authViewModel: AuthViewModel, paddingValues: PaddingValues, on
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(text = user?.name ?: "User", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.surfaceContainer)
-                                Text(text = user?.uid ?: "User", fontSize = 14.sp, color = MaterialTheme.colorScheme.surfaceContainer)
-                                Text(text = "Lihat Profil", fontSize = 14.sp, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.clickable { onProfileClick() })
+                                Text(text = user?.phone ?: "User", fontSize = 14.sp, color = MaterialTheme.colorScheme.surfaceContainer)
+                                Text(text = "Lihat Profil", fontSize = 14.sp, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.clickable { navController.navigate("profile") })
                             }
                         }
                     } else {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally // Mengatur agar kontennya di tengah
                         ) {
                             Text(
                                 text = "Anda belum masuk",
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.surfaceContainer,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
                             )
 
                             Text(
-                                text = "Silahkan masuk atau daftar.",
+                                text = "Silahkan masuk untuk melanjutkan.",
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.outline,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(onClick = onLoginClick) {
-                                    Text(text = "Login")
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Button(onClick = onRegisterClick) {
-                                    Text(text = "Register")
-                                }
+                            Button(
+                                onClick = {
+                                    navController.navigate("login")
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
+                                    contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
+                                ),
+
+
+                                ) {
+                                Text(text = "Login")
                             }
                         }
+
                     }
                 }
             }
@@ -206,7 +224,7 @@ fun AccountScreen(authViewModel: AuthViewModel, paddingValues: PaddingValues, on
             if (user != null) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 30.dp)){
                     OutlinedButton(
-                        onClick = { authViewModel.logout() },
+                        onClick = {showLogoutDialog = true},
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp), // Atur tinggi agar lebih proporsional
@@ -216,7 +234,24 @@ fun AccountScreen(authViewModel: AuthViewModel, paddingValues: PaddingValues, on
                         Text(text = "Logout", color = MaterialTheme.colorScheme.primary)
                     }
                 }
+
+
             }
+            LogoutDialog(
+                showDialog = showLogoutDialog,
+                isLoading = isLoading,
+                onDismiss = { showLogoutDialog = false },
+                onConfirmLogout = {
+                    isLoading = true
+                    authViewModel.logout {
+                        isLoading = false
+                        showLogoutDialog = false
+                        navController.navigate("home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
         }
     }
 }
