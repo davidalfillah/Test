@@ -101,6 +101,20 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
 
     Log.d("isProfileComplete", user.toString())
 
+//    LaunchedEffect(Unit) {
+//        authViewModel.fetchUserData()
+//        authViewModel.user.collectLatest { fetchedUser ->
+//            fetchedUser?.let {
+//                Log.d("isProfileComplete", it.isProfileComplete?.toString() ?: "null") // Debugging
+//                if (it.isProfileComplete == false) {
+//                    navController.navigate("profile_setup") {
+//                        popUpTo("home") { inclusive = true }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
 
 
     Scaffold(
