@@ -82,9 +82,11 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
     setStatusBarColor(
         color = when (currentRoute) {
             "home" -> MaterialTheme.colorScheme.primary
-            "shopping" -> Color.Green
-            "profile_setup" -> Color.Yellow
-            else -> Color.White
+            "shopping" -> MaterialTheme.colorScheme.background
+            "chat" -> MaterialTheme.colorScheme.primary
+            "news_detail/{newsId}" -> MaterialTheme.colorScheme.primary
+            "account" -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.primary
         },
         useDarkIcons = when (currentRoute) { // Gunakan warna ikon status bar yang sesuai
             "home" -> false
@@ -94,7 +96,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
             "news" -> false
             "account" -> false
             "profile_setup" -> true
-            else -> true
+            else -> false
         }
     )
 

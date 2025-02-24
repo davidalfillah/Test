@@ -180,7 +180,7 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
                                 model = user?.profilePicUrl,
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
                                     .background(Color.Gray),
                                 contentScale = ContentScale.Crop
