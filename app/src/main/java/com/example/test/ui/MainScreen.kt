@@ -24,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.test.AdminScreen
+import com.example.test.AuthRepository
 import com.example.test.AuthViewModel
 import com.example.test.DashboardScreen
 import com.example.test.R
@@ -41,7 +42,7 @@ import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 
 @Composable
-fun MainScreen(authViewModel: AuthViewModel = AuthViewModel()) {
+fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: "home"
@@ -133,23 +134,29 @@ fun BottomNavigationBar(navController: NavHostController) {
         BottomNavItem("account", "Akun", Icons.Default.Person)
     )
 
+    val currentRoute = navController.currentDestination?.route
+
     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         items.forEach { item ->
+            val isSelected = currentRoute == item.route
+
             NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = item.title) },
                 label = { Text(item.title) },
-                selected = navController.currentDestination?.route == item.route,
+                selected = isSelected,
                 onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
+                    if (!isSelected) { // Cegah klik ulang jika sudah di route yang sama
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                        }
                     }
-                },
-
+                }
             )
         }
     }
 }
+
 
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 

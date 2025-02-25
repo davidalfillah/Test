@@ -47,6 +47,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
 
+    implementation ("com.google.android.gms:play-services-base:18.2.0")
+    implementation("androidx.hilt:hilt-navigation-fragment:1.0.0")
     implementation("io.coil-kt.coil3:coil-compose:3.1.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")
     implementation ("com.google.code.gson:gson:2.12.1")

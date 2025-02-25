@@ -41,6 +41,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -58,12 +59,14 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
 import com.example.test.AuthViewModel
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentCharity
 import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
+import com.example.test.ui.components.UserProfileImage
 import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.charitys
@@ -90,30 +93,25 @@ data class User(
     val phone: String = "",
     val role: String = "user",
     val profilePicUrl: String = "",
-    val isProfileComplete: Boolean = false
+    var isProfileComplete: Boolean = false,
+    val createdAt: Long = 0
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, authViewModel: AuthViewModel) {
     val user by authViewModel.user.collectAsState()
+    val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
 
+    LaunchedEffect(user, isProfileComplete) {
+        if (user != null && !isProfileComplete) {
+            Log.d("Navigation", "Navigating to profile_setup")
+            navController.navigate("profile_setup") {
+                popUpTo("home") { inclusive = true }
+            }
+        }
+    }
 
-    Log.d("isProfileComplete", user.toString())
-
-//    LaunchedEffect(Unit) {
-//        authViewModel.fetchUserData()
-//        authViewModel.user.collectLatest { fetchedUser ->
-//            fetchedUser?.let {
-//                Log.d("isProfileComplete", it.isProfileComplete?.toString() ?: "null") // Debugging
-//                if (it.isProfileComplete == false) {
-//                    navController.navigate("profile_setup") {
-//                        popUpTo("home") { inclusive = true }
-//                    }
-//                }
-//            }
-//        }
-//    }
 
 
 
@@ -212,15 +210,9 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f, false) // Perbaikan: Memberi ruang agar tombol tidak terdesak
                             ) {
-                                AsyncImage(
-                                    model = user?.profilePicUrl,
-                                    contentDescription = "Profile Picture",
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Gray),
-                                    contentScale = ContentScale.Crop
-                                )
+
+                                UserProfileImage(user?.profilePicUrl, 42)
+
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = user?.name ?: "User",
@@ -331,12 +323,9 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
 
                     ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground), // Ganti dengan foto profil
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Color.Gray)
+                        painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
+                        contentDescription = "Logo",
+                        modifier = Modifier.size(80.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {

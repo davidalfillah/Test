@@ -65,6 +65,7 @@ import coil3.compose.AsyncImage
 import com.example.test.AuthViewModel
 import com.example.test.R
 import com.example.test.ui.components.LogoutDialog
+import com.example.test.ui.components.UserProfileImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -74,6 +75,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel, paddingValues: PaddingValues, ) {
     val user by authViewModel.user.collectAsState()
+    val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     Log.d("user", user.toString())
@@ -122,15 +124,7 @@ fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel
                     if (user != null) {
                         // ✅ Jika sudah login, tampilkan info profil
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(
-                                model = user?.profilePicUrl,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Gray),
-                                        contentScale = ContentScale.Crop
-                            )
+                            UserProfileImage(user?.profilePicUrl, 80)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(text = user?.name ?: "User", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.surfaceContainer)
@@ -177,6 +171,31 @@ fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel
                     }
                 }
             }
+            if (user != null && !isProfileComplete) { // Pastikan tidak null atau true
+                Box(
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp), // Pindahkan padding ke Row agar background tetap penuh
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            fontSize = 14.sp,
+                            lineHeight = 15.sp,
+                            text = "Kamu belum menyelesaikan profil",
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(onClick = { navController.navigate("profile_setup") }) {
+                            Text(text = "Selesaikan")
+                        }
+                    }
+                }
+            }
+
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth().padding(16.dp)
@@ -187,26 +206,33 @@ fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel
                 Row(
                     modifier = Modifier
                         .fillMaxWidth().padding(16.dp),
+                    horizontalArrangement =  Arrangement.SpaceBetween
 
                     ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground), // Ganti dengan foto profil
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Color.Gray)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(fontSize = 11.sp, lineHeight = 13.sp, text = "GRIB atau Gerakan Rakyat Indonesia Bersatu didirikan oleh Rosario de Marshal, atau populer sebagai Hercules. Hercules adalah mantan gangster dan broker politik asal Timor Timur")
+                        Text(fontSize = 12.sp,
+                            lineHeight = 13.sp,
+                            text = "Kamu adalah anggota GRIB")
+                        Text(fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black,
+                            lineHeight = 19.sp,
+                            text = "GRIB PAC Jateng")
                         Text(
-                            text = "Liat selengkapnya",
+                            text = "ID: 88851001253",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black, // Sesuaikan warna teks
-                            modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
                         )
+                    }
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Lihat", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
+                                contentDescription = "Lihat",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
+                            )
+                        }
                     }
                 }
             }
@@ -293,7 +319,9 @@ fun ListItem(text: String, subText: String = "", icon: ImageVector) {
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = text)
+            Text(text = text,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp)
         }
         Row(
             verticalAlignment = Alignment.CenterVertically) {

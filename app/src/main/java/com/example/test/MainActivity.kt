@@ -39,6 +39,7 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -50,8 +51,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
-
-
+import javax.inject.Inject
 
 
 class AuthRepository {
@@ -60,6 +60,9 @@ class AuthRepository {
 
     private val _verificationId = MutableStateFlow<String?>(null)
     val verificationId: StateFlow<String?> = _verificationId
+
+    private val _isProfileComplete = MutableStateFlow(false)
+    val isProfileComplete: StateFlow<Boolean> = _isProfileComplete
 
     private val _authState = MutableStateFlow<FirebaseUser?>(auth.currentUser)
     val authState: StateFlow<FirebaseUser?> = _authState
@@ -107,8 +110,16 @@ class AuthRepository {
             .addOnSuccessListener { document ->
                 if (document.exists()) {
                     val userData = document.toObject(User::class.java)
-                    Log.d("AuthRepository", "User ditemukan: $userData") // Debug
-                    _user.value = userData
+
+                    val isProfileComplete = document.getBoolean("isProfileComplete") ?: false
+
+                    userData?.let {
+                        val updatedUser = it.copy(isProfileComplete = isProfileComplete)
+                        _user.value = updatedUser
+                        _isProfileComplete.value = isProfileComplete
+                    }
+
+                    Log.d("AuthRepository", "User ditemukan: $_user") // Debugging
                 } else {
                     Log.d("AuthRepository", "User tidak ditemukan di Firestore")
                 }
@@ -204,7 +215,7 @@ class AuthRepository {
             }
     }
 
-    suspend fun checkSession(userId: String): String? {
+    private suspend fun checkSession(userId: String): String? {
         val sessionDoc = firestore.collection("sessions").document(userId).get().await()
         return sessionDoc.getString("sessionId") // 🔹 Jika null, berarti tidak ada session aktif
     }
@@ -220,30 +231,35 @@ class AuthRepository {
             val userRef = firestore.collection("users").document(user.uid)
             userRef.get().addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val isProfileComplete = document.getBoolean("isProfileComplete") ?: false
-                    onSuccess(isProfileComplete) // Kirim status profil ke UI
+                    val isComplete = document.getBoolean("isProfileComplete")
+                    Log.d("AuthRepository", "isProfileComplete dari Firestore: $isComplete")
+                    _isProfileComplete.value = isComplete ?: false
+                    onSuccess(_isProfileComplete.value)
                 } else {
+                    Log.d("AuthRepository", "Dokumen pengguna tidak ditemukan, membuat data baru...")
                     val newUser = hashMapOf(
                         "uid" to user.uid,
                         "phone" to user.phoneNumber,
-                        "profilePicUrl" to document.getString("profilePicUrl"),
-                        "role" to document.getString("role"),
                         "isProfileComplete" to false,
                         "createdAt" to System.currentTimeMillis()
                     )
                     userRef.set(newUser).addOnSuccessListener {
-                        onSuccess(false) // User baru, arahkan ke profil setup
-                    }.addOnFailureListener {
-                        onError("Gagal menyimpan data pengguna.")
+                        Log.d("AuthRepository", "User baru dibuat dengan isProfileComplete = false")
+                        _isProfileComplete.value = false
+                        onSuccess(false)
+                    }.addOnFailureListener { error ->
+                        onError("Gagal menyimpan data pengguna: ${error.message}")
                     }
                 }
-            }.addOnFailureListener {
-                onError("Gagal mengambil data pengguna.")
+            }.addOnFailureListener { error ->
+                onError("Gagal mengambil data pengguna: ${error.message}")
             }
+
         } else {
             onError("Pengguna tidak ditemukan.")
         }
     }
+
 
     /**
      * Logout pengguna
@@ -268,10 +284,13 @@ class AuthRepository {
     }
 }
 
-class AuthViewModel : ViewModel() {
-    private val authRepository = AuthRepository()
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    private val authRepository: AuthRepository
+) : ViewModel() {
     val authState = authRepository.authState
     val user = authRepository.user
+    val isProfileComplete: StateFlow<Boolean> = authRepository.isProfileComplete
 
     init {
         fetchUserData()
@@ -390,7 +409,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TestTheme {
-                val authViewModel = remember { AuthViewModel() } // ✅ Gunakan remember agar tidak reset saat recomposition
+                val authViewModel = remember { AuthViewModel(
+                    authRepository = AuthRepository()
+                ) } // ✅ Gunakan remember agar tidak reset saat recomposition
                 MainScreen(authViewModel)
             }
         }
