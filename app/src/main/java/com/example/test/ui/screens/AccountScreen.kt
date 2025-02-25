@@ -296,7 +296,7 @@ fun SettingsList() {
         ListItem(text = "Pengaturan", subText = "", icon = Icons.Default.Settings)
         ListItem(text = "Tentang Hello GRIB", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_info_outline_24))
         ListItem(text = "Pusat Bantuan", subText = "", icon = Icons.Default.Call)
-        ListItem(text = "Syarat & Ketentuan", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_newspaper_24))
+        ListItem(text = "Syarat & Ketentuan", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_description_24))
         ListItem(text = "Kebijakan Privasi", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_privacy_tip_24))
     }
 }

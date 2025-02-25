@@ -35,14 +35,6 @@ import com.example.test.R
 import com.example.test.ui.dataTest.ChatItem
 
 
-@Composable
-fun ChatListComponent(chats: List<ChatItem>, onClick: (ChatItem) -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxWidth()) {
-        items(chats) { chat ->
-            ChatItemComponent(chat, onClick)
-        }
-    }
-}
 
 @Composable
 fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
