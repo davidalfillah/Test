@@ -12,10 +12,12 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,6 +32,7 @@ import com.example.test.DashboardScreen
 import com.example.test.R
 import com.example.test.setStatusBarColor
 import com.example.test.ui.screens.AccountScreen
+import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
 import com.example.test.ui.screens.HomeScreen
 import com.example.test.ui.screens.LoginScreen
@@ -40,6 +43,7 @@ import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
+import com.example.test.ui.viewModels.ChatViewModel
 
 @Composable
 fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
@@ -78,6 +82,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     "status",
                     "success?nextScreen={nextScreen}",
                     "profile_setup",
+                    "chat_detail/{chatId}",
                     "news_detail/{newsId}",
                     "otp_screen/{phoneNumber}"))
             {
@@ -107,7 +112,11 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             }
             composable("news") { NewsScreen(navController, paddingValues = PaddingValues) }
             composable("shopping") { ShoppingScreen(navController, paddingValues = PaddingValues) }
-            composable("chat") { ChatsScreen(navController, paddingValues = PaddingValues) }
+            composable("chat") { ChatsScreen(navController, paddingValues = PaddingValues, chatViewModel = ChatViewModel(), authViewModel = authViewModel) }
+            composable("chat_detail/{chatId}") { backStackEntry ->
+                val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+                ChatDetailScreen(navController, ChatViewModel(), authViewModel, chatId)
+            }
             composable(
                 "otp_screen/{phoneNumber}",
                 arguments = listOf(navArgument("phoneNumber") { var type = NavType.StringType })

@@ -45,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import okhttp3.OkHttpClient
@@ -68,9 +69,8 @@ class AuthRepository {
     val authState: StateFlow<FirebaseUser?> = _authState
 
     private val _user = MutableStateFlow<User?>(null)
-    val user: StateFlow<User?> = _user
+    val user: StateFlow<User?> = _user.asStateFlow()
 
-    val deviceInfo = "${Build.MANUFACTURER} ${Build.MODEL}"
 
     fun getPublicIpAddress(): String {
         return try {
@@ -103,14 +103,17 @@ class AuthRepository {
         firestore.collection("sessions").document(userId).delete().await()
     }
 
+    val deviceInfo = "${Build.MANUFACTURER} ${Build.MODEL}"
 
     fun fetchUserData() {
+        Log.d("AuthRepository", "fetchUserData dipanggil")
+
         val uid = auth.currentUser?.uid ?: return
+
         firestore.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
                     val userData = document.toObject(User::class.java)
-
                     val isProfileComplete = document.getBoolean("isProfileComplete") ?: false
 
                     userData?.let {
@@ -118,15 +121,13 @@ class AuthRepository {
                         _user.value = updatedUser
                         _isProfileComplete.value = isProfileComplete
                     }
-
                     Log.d("AuthRepository", "User ditemukan: $_user") // Debugging
                 } else {
                     Log.d("AuthRepository", "User tidak ditemukan di Firestore")
                 }
-            }
-            .addOnFailureListener { exception ->
+            }.addOnFailureListener { exception ->
                 Log.e("AuthRepository", "Gagal mengambil data pengguna", exception)
-            }
+        }
     }
 
 
@@ -292,20 +293,24 @@ class AuthViewModel @Inject constructor(
     val user = authRepository.user
     val isProfileComplete: StateFlow<Boolean> = authRepository.isProfileComplete
 
+
+
     init {
         fetchUserData()
     }
+
+
 
     fun sendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
         authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
     }
 
-    fun resendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
-        authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
-    }
-
     fun fetchUserData() {
         authRepository.fetchUserData()
+    }
+
+    fun resendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
+        authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
     }
 
 

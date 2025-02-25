@@ -32,9 +32,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +46,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.test.AuthViewModel
 import com.example.test.R
 import com.example.test.ui.components.ChatItemComponent
 import com.example.test.ui.components.SlideComponentBanner
@@ -52,29 +56,43 @@ import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.products
 import com.example.test.ui.dataTest.sampleChats
+import com.example.test.ui.dataType.ChatData
+import com.example.test.ui.dataType.ChatUserData
+import com.example.test.ui.viewModels.ChatViewModel
 import kotlin.math.round
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues) {
+fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, chatViewModel: ChatViewModel, authViewModel: AuthViewModel) {
+    val user by authViewModel.user.collectAsState()
+    val currentUserPhone = user?.phone ?: ""
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Semua") }
 
     val filters = listOf("Semua", "Belum Dibaca", "Hari Ini", "Minggu Ini")
 
-    // Filter chats berdasarkan searchQuery dan selectedFilter
-    val filteredChats = sampleChats.filter { chat ->
-        (chat.name.contains(searchQuery, ignoreCase = true) ||
-                chat.lastMessage.contains(searchQuery, ignoreCase = true)) &&
-                when (selectedFilter) {
-                    "Belum Dibaca" -> chat.badge > 0
-                    "Hari Ini" -> chat.time.contains("AM") || chat.time.contains("PM")  // Misalnya, bisa diganti dengan waktu sebenarnya
-                    "Minggu Ini" -> chat.time in listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-                    else -> true
-                }
+
+    val chats = remember { mutableStateOf<List<ChatData>>(emptyList()) }
+
+    LaunchedEffect(currentUserPhone) {
+        chatViewModel.listenToChats(currentUserPhone) { newChats ->
+            chats.value = newChats
+        }
     }
 
 
+
+//     Filter chats berdasarkan searchQuery dan selectedFilter
+    val filteredChats = chats.value.filter { chat ->
+        (chat.user2?.name?.contains(searchQuery, ignoreCase = true) == true ||
+                chat.last?.msgId?.contains(searchQuery, ignoreCase = true) == true) &&
+                when (selectedFilter) {
+                    "Belum Dibaca" -> chat.user2?.unread!! > 0
+                    "Hari Ini" -> chat.last?.time.toString().contains("AM") || chat.last?.time.toString().contains("PM")  // Misalnya, bisa diganti dengan waktu sebenarnya
+                    "Minggu Ini" -> chat.last?.time.toString() in listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+                    else -> true
+                }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -104,7 +122,7 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues) 
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    Log.d("ChatsScreen", "FAB Clicked: Create new message")
+                    user?.let { chatViewModel.addChat(it, "081234567890") }
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -130,6 +148,7 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues) 
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
+
             ) {
                 item {
                     OutlinedTextField(
@@ -163,8 +182,20 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues) 
                     }
                 }
                 items(filteredChats) { chat ->
-                    ChatItemComponent(chat, onClick = {})
+                    val chatUser: ChatUserData? = if (user?.uid != null && chat.user1?.userId != user!!.uid) {
+                        chat.user1
+                    } else {
+                        chat.user2
+                    }
+
+                    chatUser?.let { user ->
+                        chat.last?.let { lastMessage ->
+                            ChatItemComponent(user, lastMessage, onClick = {navController.navigate("chat_detail/${chat.chatId}")})
+                        }
+                    }
                 }
+
+
                 item {
                     Spacer(Modifier.height(120.dp))
                 }

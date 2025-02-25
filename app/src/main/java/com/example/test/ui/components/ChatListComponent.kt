@@ -28,21 +28,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.test.R
 import com.example.test.ui.dataTest.ChatItem
-
+import com.example.test.ui.dataType.ChatData
+import com.example.test.ui.dataType.ChatUserData
+import com.example.test.ui.dataType.Message
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
-fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
+fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserData) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(chat) }
-            .padding(horizontal = 16.dp).padding(vertical = 12.dp),
+            .clickable { onClick(chat) } // ✅ Memanggil fungsi onClick
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Profile Picture + Nama + Pesan Terakhir
@@ -50,24 +57,34 @@ fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
             modifier = Modifier.weight(1f), // Supaya teks tidak melebihi batas kanan
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserProfileImage(chat.profilePic, 60)
+            UserProfileImage(chat.imageUrl, 60)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = chat.name, fontWeight = FontWeight.Bold)
-                Text(text = chat.lastMessage, fontSize = 14.sp, color = Color.Gray)
+                Text(
+                    text = message.content,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    maxLines = 1, // ✅ Agar teks tidak terlalu panjang
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
         // Waktu + Badge
         Column(
-            modifier = Modifier.fillMaxHeight(), // Supaya tetap berada di atas
+            modifier = Modifier.fillMaxHeight(),
             horizontalAlignment = Alignment.End
         ) {
-            Text(text = chat.time, fontSize = 12.sp, color = Color.Gray)
+            Text(
+                text = formatTimeAgo(message.time), // ✅ Format waktu
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
             Spacer(modifier = Modifier.height(4.dp)) // Jarak antara waktu dan badge
 
-            if (chat.badge > 0) {
+            if (chat.unread > 0) {
                 Box(
                     modifier = Modifier
                         .size(20.dp)
@@ -75,7 +92,7 @@ fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
                         .wrapContentSize(Alignment.Center)
                 ) {
                     Text(
-                        text = chat.badge.toString(),
+                        text = chat.unread.toString(),
                         fontSize = 12.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -85,5 +102,22 @@ fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
         }
     }
 }
+
+
+fun formatTimeAgo(timestamp: Timestamp?): String {
+    if (timestamp == null) return ""
+
+    val date = timestamp.toDate()
+    val now = Date()
+    val diff = now.time - date.time
+
+    return when {
+        diff < 60_000 -> "Baru saja"
+        diff < 3_600_000 -> "${diff / 60_000} menit lalu"
+        diff < 86_400_000 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+        else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(date)
+    }
+}
+
 
 
