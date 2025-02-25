@@ -50,7 +50,7 @@ fun ChatItemComponent(chat: ChatItem, onClick: (ChatItem) -> Unit) {
             modifier = Modifier.weight(1f), // Supaya teks tidak melebihi batas kanan
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserProfileImage(chat.profilePic, 40)
+            UserProfileImage(chat.profilePic, 60)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = chat.name, fontWeight = FontWeight.Bold)
