@@ -74,6 +74,7 @@ data class Message(
     val fileSize: String = "",
     val videoUrl: String = "",
     val progress: String = "",
+    val status: String = "",
     val content: String = "",
     val time: Timestamp? = null,
     val forwarded: Boolean = false

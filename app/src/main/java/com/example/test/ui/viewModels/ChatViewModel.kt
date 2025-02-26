@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.test.AuthRepository
 import com.example.test.AuthViewModel
 import com.example.test.ui.dataType.ChatData
@@ -13,10 +14,15 @@ import com.example.test.ui.screens.User
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Filter
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,25 +52,81 @@ class ChatViewModel @Inject constructor() : ViewModel() {
             }
     }
 
-    fun listenToMessages(chatId: String, onResult: (List<Message>) -> Unit) {
+    fun loadInitialMessages(chatId: String, onResult: (List<Message>, DocumentSnapshot?) -> Unit) {
         Firebase.firestore.collection("chats").document(chatId).collection("messages")
-            .orderBy("time", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("ChatViewModel", "Error fetching messages", error)
-                    return@addSnapshotListener
+            .orderBy("time", Query.Direction.DESCENDING)
+            .limit(20) // 🔹 Ambil 20 pesan terbaru
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    onResult(emptyList(), null)
+                    return@addOnSuccessListener
                 }
 
-                if (snapshot == null || snapshot.isEmpty) {
-                    Log.d("ChatViewModel", "No messages found")
-                    onResult(emptyList())  // Kembalikan list kosong jika tidak ada pesan
-                    return@addSnapshotListener
-                }
+                val messages = snapshot.documents.mapNotNull { it.toObject(Message::class.java) }
+                val lastVisibleMessage = snapshot.documents.last() // 🔹 Simpan last message untuk pagination
 
-                val messageList = snapshot.documents.mapNotNull { it.toObject(Message::class.java) }
-                onResult(messageList)  // Kirim hasilnya melalui callback
+                onResult(messages.reversed(), lastVisibleMessage) // 🔹 Balik urutan agar pesan terbaru di bawah
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatViewModel", "Error fetching messages", e)
+                onResult(emptyList(), null)
             }
     }
+
+    fun listenForNewMessages(chatId: String, currentUserId: String, onNewMessage: (Message) -> Unit) {
+        FirebaseFirestore.getInstance()
+            .collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .orderBy("time", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshots, error ->
+                if (error != null || snapshots == null) return@addSnapshotListener
+
+                for (doc in snapshots.documentChanges) {
+                    if (doc.type == DocumentChange.Type.ADDED) {
+                        val newMessage = doc.document.toObject(Message::class.java)
+
+                        // Hanya reset unread jika pesan baru ditujukan ke pengguna yang sedang membuka chat
+                        if (newMessage.senderId != currentUserId) {
+                            viewModelScope.launch {
+                                resetUnreadMessages(chatId, currentUserId)
+                                markAsRead(chatId, newMessage.msgId)
+                            }
+                        }
+
+                        onNewMessage(newMessage)
+                    }
+                }
+            }
+    }
+
+
+    fun loadMoreMessages(chatId: String, lastMessage: DocumentSnapshot?, onResult: (List<Message>, DocumentSnapshot?) -> Unit) {
+        if (lastMessage == null) return // 🔹 Jika tidak ada pesan sebelumnya, tidak perlu load lagi
+
+        Firebase.firestore.collection("chats").document(chatId).collection("messages")
+            .orderBy("time", Query.Direction.DESCENDING)
+            .startAfter(lastMessage) // 🔹 Mulai dari pesan terakhir yang sudah diambil
+            .limit(20)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    onResult(emptyList(), null)
+                    return@addOnSuccessListener
+                }
+
+                val newMessages = snapshot.documents.mapNotNull { it.toObject(Message::class.java) }
+                val newLastVisibleMessage = snapshot.documents.last()
+
+                onResult(newMessages.reversed(), newLastVisibleMessage) // 🔹 Balik urutan agar pesan terbaru tetap di bawah
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatViewModel", "Error fetching more messages", e)
+                onResult(emptyList(), lastMessage)
+            }
+    }
+
 
 
 
@@ -72,27 +134,89 @@ class ChatViewModel @Inject constructor() : ViewModel() {
      * 🔹 Mengirim pesan ke Firestore
      */
     fun sendMessage(chatId: String, content: String, senderId: String) {
-        val messageRef = Firebase.firestore.collection("chats").document(chatId).collection("messages").document()
+        val messageRef = Firebase.firestore.collection("chats").document(chatId)
+            .collection("messages").document()
         val timestamp = Timestamp.now()
 
-        val message = Message(
+        val newMessage = Message(
             msgId = messageRef.id,
             senderId = senderId,
             content = content,
-            time = timestamp
+            time = timestamp,
+            status = "pending"
         )
 
-        messageRef.set(message)
+        messageRef.set(newMessage)
             .addOnSuccessListener {
                 Log.d("ChatViewModel", "Message sent successfully")
 
-                // Setelah pesan dikirim, perbarui "last" di chats/{chatId}
-                updateLastMessage(chatId, message)
+                // Update status menjadi "sent"
+                messageRef.update("status", "sent")
+                    .addOnFailureListener { e ->
+                        Log.e("ChatViewModel", "Failed to update message status to sent", e)
+                    }
+
+                updateLastMessage(chatId, newMessage)
             }
             .addOnFailureListener { e ->
                 Log.e("ChatViewModel", "Error sending message", e)
+
+                // Jika gagal, ubah status menjadi "failed"
+                messageRef.update("status", "failed")
+                    .addOnFailureListener { updateError ->
+                        Log.e("ChatViewModel", "Failed to update message status to failed", updateError)
+                    }
             }
     }
+
+    private fun markAsRead(chatId: String, messageId: String) {
+        val db = Firebase.firestore
+        val chatRef = db.collection("chats").document(chatId)
+        val messageRef = chatRef.collection("messages").document(messageId)
+
+        db.runTransaction { transaction ->
+            val messageSnapshot = transaction.get(messageRef)
+            val lastSnapshot = transaction.get(chatRef)
+
+            if (messageSnapshot.exists()) {
+                // Update status di messages
+                transaction.update(messageRef, "status", "read")
+
+                // Update status di chats.last.status langsung
+                val lastMsgId = lastSnapshot.getString("last.msgId")
+                Log.d("ChatViewModel", "Last message ID: $lastMsgId, Current message ID: $messageId")
+
+                if (lastMsgId == messageId) {
+                    Log.d("ChatViewModel", "Updating last.status to read")
+                    transaction.update(chatRef, "last.status", "read")
+                }
+            }
+        }.addOnSuccessListener {
+            Log.d("ChatViewModel", "Message and last status updated successfully")
+        }.addOnFailureListener { e ->
+            Log.e("ChatViewModel", "Failed to update message and last status", e)
+        }
+    }
+
+
+
+
+
+    fun recallMessage(chatId: String, messageId: String) {
+        Firebase.firestore.collection("chats").document(chatId)
+            .collection("messages").document(messageId)
+            .update("content", "Pesan telah ditarik", "status", "recalled")
+    }
+
+
+
+    fun markAsDelivered(chatId: String, messageId: String) {
+        Firebase.firestore.collection("chats").document(chatId)
+            .collection("messages").document(messageId)
+            .update("status", "delivered")
+    }
+
+
 
     private fun updateLastMessage(chatId: String, lastMessage: Message) {
         val chatRef = Firebase.firestore.collection("chats").document(chatId)
@@ -130,10 +254,11 @@ class ChatViewModel @Inject constructor() : ViewModel() {
                 val chatData = snapshot.toObject(ChatData::class.java)
                 if (chatData != null) {
                     val isUser1 = chatData.user1?.userId == currentUserId
-                    val unreadCount = if (isUser1) chatData.user1?.unread ?: 0 else chatData.user2?.unread ?: 0
+                    val unreadCount = if (isUser1) chatData.user2?.unread ?: 0 else chatData.user1?.unread ?: 0
 
-                    // Jika unread masih ada, reset
+                    // 🔹 Reset unread hanya jika masih ada dan user benar-benar di chat screen
                     if (unreadCount > 0) {
+                        Log.d("ChatViewModel", "Resetting unread count for chatId: $chatId, userId: $currentUserId")
                         resetUnreadMessages(chatId, currentUserId)
                     }
                 }

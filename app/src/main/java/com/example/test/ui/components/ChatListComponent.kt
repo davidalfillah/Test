@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +49,7 @@ import java.util.Locale
 
 
 @Composable
-fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserData) -> Unit) {
+fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserData) -> Unit, isUserMessage: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -61,13 +66,18 @@ fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserDa
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = chat.name, fontWeight = FontWeight.Bold)
-                Text(
-                    text = message.content,
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    maxLines = 1, // ✅ Agar teks tidak terlalu panjang
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row {
+                    if(isUserMessage){
+                        MessageStatusIcon(message.status)
+                    }
+                    Text(
+                        text = message.content,
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        maxLines = 1, // ✅ Agar teks tidak terlalu panjang
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
 
@@ -116,6 +126,17 @@ fun formatTimeAgo(timestamp: Timestamp?): String {
         diff < 3_600_000 -> "${diff / 60_000} menit lalu"
         diff < 86_400_000 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
         else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(date)
+    }
+}
+
+@Composable
+fun MessageStatusIcon(status: String) {
+    when (status) {
+        "pending" -> Icon(Icons.Default.DateRange, contentDescription = "Pending")  // ⏳
+        "sent" -> Icon(Icons.Default.Check, contentDescription = "Sent")  // ✔
+        "delivered" -> Icon(Icons.Default.CheckCircle, contentDescription = "Delivered")  // ✔✔
+        "read" -> Icon(Icons.Default.CheckCircle, tint = Color.Blue, contentDescription = "Read")  // ✔✔ (biru)
+        "failed" -> Icon(Icons.Default.Clear, contentDescription = "Failed", tint = Color.Red)  // ❌
     }
 }
 

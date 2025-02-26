@@ -187,10 +187,10 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, 
                     } else {
                         chat.user2
                     }
-
-                    chatUser?.let { user ->
+                    chatUser?.let { currentUser ->
                         chat.last?.let { lastMessage ->
-                            ChatItemComponent(user, lastMessage, onClick = {navController.navigate("chat_detail/${chat.chatId}")})
+                            val isUserMessage = lastMessage.senderId == user?.uid
+                            ChatItemComponent(currentUser, lastMessage, onClick = {navController.navigate("chat_detail/${chat.chatId}")}, isUserMessage)
                         }
                     }
                 }
