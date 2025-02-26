@@ -1,6 +1,7 @@
 package com.example.test.ui.screens
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +35,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -56,43 +59,44 @@ import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.products
 import com.example.test.ui.dataTest.sampleChats
-import com.example.test.ui.dataType.ChatData
-import com.example.test.ui.dataType.ChatUserData
+import com.example.test.ui.dataType.Chat
 import com.example.test.ui.viewModels.ChatViewModel
 import kotlin.math.round
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, chatViewModel: ChatViewModel, authViewModel: AuthViewModel) {
+fun ChatsScreen(
+    navController: NavHostController,
+    paddingValues: PaddingValues,
+    chatViewModel: ChatViewModel,
+    authViewModel: AuthViewModel
+) {
     val user by authViewModel.user.collectAsState()
-    val currentUserPhone = user?.phone ?: ""
+    var chats by remember { mutableStateOf<List<Chat>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("Semua") }
+    var selectedFilter by remember { mutableStateOf("All") }
+    var phoneNumber by remember { mutableStateOf("+6283822158268") }
+    val context = LocalContext.current
 
-    val filters = listOf("Semua", "Belum Dibaca", "Hari Ini", "Minggu Ini")
-
-
-    val chats = remember { mutableStateOf<List<ChatData>>(emptyList()) }
-
-    LaunchedEffect(currentUserPhone) {
-        chatViewModel.listenToChats(currentUserPhone) { newChats ->
-            chats.value = newChats
+    // Ambil daftar chat saat user login berubah
+    LaunchedEffect(user?.uid) {
+        user?.uid?.let { userId ->
+            chatViewModel.fetchChats(userId) { chatList ->
+                chats = chatList // Sekarang ini otomatis update di UI
+            }
         }
     }
 
-
-
-//     Filter chats berdasarkan searchQuery dan selectedFilter
-    val filteredChats = chats.value.filter { chat ->
-        (chat.user2?.name?.contains(searchQuery, ignoreCase = true) == true ||
-                chat.last?.msgId?.contains(searchQuery, ignoreCase = true) == true) &&
-                when (selectedFilter) {
-                    "Belum Dibaca" -> chat.user2?.unread!! > 0
-                    "Hari Ini" -> chat.last?.time.toString().contains("AM") || chat.last?.time.toString().contains("PM")  // Misalnya, bisa diganti dengan waktu sebenarnya
-                    "Minggu Ini" -> chat.last?.time.toString() in listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-                    else -> true
-                }
+    // Filter daftar chat berdasarkan pencarian & filter yang dipilih
+    val filteredChats by remember {
+        derivedStateOf {
+            chats.filter {
+                (selectedFilter == "All" || (selectedFilter == "Group" && it.isGroup) || (selectedFilter == "Personal" && !it.isGroup)) &&
+                        (searchQuery.isEmpty() || it.groupName?.contains(searchQuery, true) == true || it.participants.any { id -> id.contains(searchQuery, true) })
+            }
+        }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -102,17 +106,17 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, 
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(onClick = { /* Aksi ketika tombol pencarian ditekan */ }) {
+                    IconButton(onClick = { /* Aksi ketika tombol kontak ditekan */ }) {
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.baseline_contacts_24),
-                            contentDescription = "Contacs",
+                            contentDescription = "Kontak",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
-                    IconButton(onClick = { /* Aksi ketika tombol pencarian ditekan */ }) {
+                    IconButton(onClick = { /* Aksi ketika tombol lebih ditekan */ }) {
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.baseline_more_vert_24),
-                            contentDescription = "Contacs",
+                            contentDescription = "Lainnya",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -122,12 +126,22 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, 
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    user?.let { chatViewModel.addChat(it, "081234567890") }
+                    if (phoneNumber.isNotEmpty()) {
+                        user?.let {
+                            chatViewModel.getOrCreateChatByPhone(it.uid, phoneNumber) { chatId ->
+                                if (chatId != null) {
+                                    Toast.makeText(context, "Chat berhasil dibuat!", Toast.LENGTH_SHORT).show()
+                                    navController.navigate("chat_detail/$chatId")
+                                } else {
+                                    Toast.makeText(context, "Nomor tidak ditemukan!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .offset(y = (-80).dp) // Mengangkat FAB ke atas agar tidak tertutup
+                modifier = Modifier.padding(bottom = 16.dp) // Sesuaikan posisi FAB
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Buat Pesan Baru")
             }
@@ -138,63 +152,67 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, 
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    top = innerPadding.calculateTopPadding(),  // Jaga jarak dari AppBar
-                    bottom = paddingValues.calculateBottomPadding() // Hindari tumpang tindih dengan BottomNav
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding()
                 )
         ) {
+            // Pencarian
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp),
+                placeholder = { Text("Cari chat atau pengguna...", fontSize = 14.sp) },
+                shape = CircleShape,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
+                singleLine = true,
+                textStyle = TextStyle(fontSize = 14.sp),
+            )
 
-            // Chat List (Scrollable Vertically)
+            // Filter Chat
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                items(listOf("All", "Personal", "Group")) { filter ->
+                    FilterChip(
+                        selected = selectedFilter == filter,
+                        onClick = { selectedFilter = filter },
+                        label = { Text(filter) },
+                        shape = CircleShape,
+                    )
+                }
+            }
+
+            // Daftar Chat
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
-
             ) {
-                item {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .height(48.dp), // Ukuran lebih kecil
-                        placeholder = { Text("Search...", fontSize = 14.sp) },
-                        shape = CircleShape, // Bentuk bulat sempurna
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = 14.sp), // Ukuran teks lebih kecil
-                    )
-
-                }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp) // Padding hanya di awal dan akhir
-                    ) {
-                        items(filters) { filter ->
-                            FilterChip(
-                                selected = selectedFilter == filter,
-                                onClick = { selectedFilter = filter },
-                                label = { Text(filter) },
-                                shape = CircleShape,
-                            )
-                        }
-                    }
-                }
                 items(filteredChats) { chat ->
-                    val chatUser: ChatUserData? = if (user?.uid != null && chat.user1?.userId != user!!.uid) {
-                        chat.user1
-                    } else {
-                        chat.user2
-                    }
-                    chatUser?.let { currentUser ->
-                        chat.last?.let { lastMessage ->
-                            val isUserMessage = lastMessage.senderId == user?.uid
-                            ChatItemComponent(currentUser, lastMessage, onClick = {navController.navigate("chat_detail/${chat.chatId}")}, isUserMessage)
+                    val otherUserId = chat.participants.firstOrNull { it != user?.uid }
+                    var otherUserProfileUrl by remember { mutableStateOf<String?>(null) }
+
+                    LaunchedEffect(otherUserId) {
+                        if (!chat.isGroup && otherUserId != null) {
+                            chatViewModel.getUserProfile(otherUserId) { profileUrl ->
+                                otherUserProfileUrl = profileUrl
+                            }
                         }
                     }
-                }
 
+                    ChatItemComponent(
+                        chat = chat,
+                        onClick = { navController.navigate("chat_detail/${chat.chatId}") },
+                        otherUserProfileUrl = otherUserProfileUrl,
+                        otherUserId = otherUserId,
+                        userUid = user?.uid,
+                        chatViewModel = chatViewModel
+                    )
+                }
 
                 item {
                     Spacer(Modifier.height(120.dp))
@@ -203,3 +221,4 @@ fun ChatsScreen(navController: NavHostController, paddingValues: PaddingValues, 
         }
     }
 }
+

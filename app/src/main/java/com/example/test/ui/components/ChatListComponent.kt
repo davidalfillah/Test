@@ -25,6 +25,11 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,11 +42,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import com.example.test.R
 import com.example.test.ui.dataTest.ChatItem
-import com.example.test.ui.dataType.ChatData
-import com.example.test.ui.dataType.ChatUserData
+import com.example.test.ui.dataType.Chat
 import com.example.test.ui.dataType.Message
+import com.example.test.ui.viewModels.ChatViewModel
 import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -49,7 +55,20 @@ import java.util.Locale
 
 
 @Composable
-fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserData) -> Unit, isUserMessage: Boolean) {
+fun ChatItemComponent(chat: Chat, onClick: (Chat) -> Unit, otherUserProfileUrl: String?, otherUserId: String?, userUid: String?, chatViewModel: ChatViewModel) {
+    val name = if (chat.isGroup) chat.groupName ?: "Grup Tanpa Nama" else otherUserId ?: "Unknown"
+    var unreadCount by remember { mutableStateOf(0) }
+
+    val otherUser = chat.participantsInfo.values.firstOrNull { it?.uid != userUid }
+
+    LaunchedEffect(chat.chatId) {
+        if (userUid != null) {
+            chatViewModel.getUnreadCount(chat.chatId, userUid) { count ->
+                unreadCount = count
+            }
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -62,16 +81,18 @@ fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserDa
             modifier = Modifier.weight(1f), // Supaya teks tidak melebihi batas kanan
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserProfileImage(chat.imageUrl, 60)
+            UserProfileImage(otherUser?.profilePicUrl,60
+            )
+
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(text = chat.name, fontWeight = FontWeight.Bold)
+                otherUser?.name?.let { Text(text = it, fontWeight = FontWeight.Bold) }
                 Row {
-                    if(isUserMessage){
-                        MessageStatusIcon(message.status)
-                    }
+//                    if(isUserMessage){
+//                        MessageStatusIcon(message.status)
+//                    }
                     Text(
-                        text = message.content,
+                        text = chat.lastMessage,
                         fontSize = 14.sp,
                         color = Color.Gray,
                         maxLines = 1, // ✅ Agar teks tidak terlalu panjang
@@ -87,14 +108,14 @@ fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserDa
             horizontalAlignment = Alignment.End
         ) {
             Text(
-                text = formatTimeAgo(message.time), // ✅ Format waktu
+                text = formatTimeAgo(chat.lastMessageTimestamp), // ✅ Format waktu
                 fontSize = 12.sp,
                 color = Color.Gray
             )
 
             Spacer(modifier = Modifier.height(4.dp)) // Jarak antara waktu dan badge
 
-            if (chat.unread > 0) {
+            if (unreadCount > 0) {
                 Box(
                     modifier = Modifier
                         .size(20.dp)
@@ -102,7 +123,7 @@ fun ChatItemComponent(chat: ChatUserData, message: Message, onClick: (ChatUserDa
                         .wrapContentSize(Alignment.Center)
                 ) {
                     Text(
-                        text = chat.unread.toString(),
+                        text = unreadCount.toString(),
                         fontSize = 12.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold

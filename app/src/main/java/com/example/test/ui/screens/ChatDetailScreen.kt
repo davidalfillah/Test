@@ -80,9 +80,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavHostController
 import com.example.test.AuthViewModel
 import com.example.test.R
+import com.example.test.ui.components.ChatBubble
+import com.example.test.ui.components.ChatInputField
+import com.example.test.ui.components.TypingIndicator
 import com.example.test.ui.components.UserProfileImage
 import com.example.test.ui.components.formatTimeAgo
-import com.example.test.ui.dataType.ChatUserData
+import com.example.test.ui.dataType.Chat
 import com.example.test.ui.dataType.Message
 import com.example.test.ui.viewModels.ChatViewModel
 import com.google.firebase.firestore.DocumentSnapshot
@@ -90,6 +93,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 
@@ -102,110 +106,22 @@ fun ChatDetailScreen(
     chatId: String,  // ID chat yang sedang dibuka
 ) {
     val user by authViewModel.user.collectAsState()
-    var messages by remember { mutableStateOf<List<Message>>(emptyList()) }
-    var lastVisibleMessage by remember { mutableStateOf<DocumentSnapshot?>(null) }
-    val messageText = remember { mutableStateOf("") }
-    var chatUser by remember { mutableStateOf(ChatUserData(name = "Loading...", imageUrl = "")) }
+    val messages by chatViewModel.getMessages(chatId).collectAsState(initial = emptyList()) // Pesan chat
+    val chatInfo by chatViewModel.getChatInfo(chatId).collectAsState(initial = null) // Info chat
+    val isOtherUserTyping by chatViewModel.isTyping(chatId, user!!.uid).collectAsState(initial = false)
+
+    val otherUser = if (chatInfo?.isGroup == true) {
+        Triple(chatInfo!!.chatId, chatInfo!!.groupName ?: "", chatInfo!!.groupImageUrl ?: "")
+    } else {
+        val user = chatInfo?.participantsInfo?.values?.firstOrNull { it?.uid != user?.uid }
+        Triple(user?.uid ?: "", user?.name ?: "", user?.profilePicUrl ?: "")
+    }
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // Tambahkan Coroutine Scope
     var isInitialLoad by remember { mutableStateOf(true) } // Tambahan flag untuk membedakan initial load dan pagination
     var isFabVisible by remember { mutableStateOf(false) } // State untuk menampilkan FAB
     var isLoadingMore by remember { mutableStateOf(false) } // State untuk indikator loading
-
-
-    LaunchedEffect(Unit) {
-        snapshotFlow { messages }
-            .collectLatest { msgList ->
-                msgList.forEach { message ->
-                    if (message.status == "sent" && message.senderId != user?.uid) {
-                        chatViewModel.markAsDelivered(chatId, message.msgId)
-                    }
-                }
-            }
-    }
-
-
-
-    // Auto-scroll ke chat terbaru hanya saat pertama kali load
-    LaunchedEffect(messages) {
-        if (messages.isNotEmpty() && isInitialLoad) {
-            listState.scrollToItem(messages.size - 1) // Gunakan `scrollToItem` agar tidak ada animasi yang mengganggu
-            isInitialLoad = false
-        }
-    }
-
-// Mendeteksi pergerakan scroll untuk menampilkan FAB
-    LaunchedEffect(Unit) {
-        snapshotFlow { listState.layoutInfo }
-            .collect { layoutInfo ->
-                val isNotAtBottom = listState.firstVisibleItemIndex + layoutInfo.visibleItemsInfo.size < messages.size
-                isFabVisible = isNotAtBottom // FAB hanya muncul jika tidak berada di paling bawah
-            }
-    }
-
-    LaunchedEffect(messages) {
-        val isAtBottom = messages.isNotEmpty() &&
-                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == messages.size - 2
-        if (isAtBottom) {
-            listState.animateScrollToItem(messages.size - 1)
-        }
-    }
-
-
-    // Pagination: Memuat lebih banyak pesan saat pengguna scroll ke atas
-    LaunchedEffect(Unit) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { index ->
-                if (index == 0 && lastVisibleMessage != null && !isLoadingMore) {
-                    val firstVisibleItemIndex = listState.firstVisibleItemIndex
-                    val firstVisibleItemOffset = listState.firstVisibleItemScrollOffset
-
-                    isLoadingMore = true // Aktifkan loading
-                    chatViewModel.loadMoreMessages(chatId, lastVisibleMessage) { newMessages, lastMessage ->
-                        messages = newMessages + messages
-                        lastVisibleMessage = lastMessage
-                        isLoadingMore = false // Matikan loading
-
-                        coroutineScope.launch {
-                            listState.scrollToItem(firstVisibleItemIndex + newMessages.size, firstVisibleItemOffset)
-                        }
-                    }
-                }
-            }
-    }
-
-
-    LaunchedEffect(key1 = chatId, key2 = user?.uid) {
-        user?.let { currentUser ->
-            chatViewModel.loadInitialMessages(chatId) { newMessages, lastMessage ->
-                messages = newMessages
-                lastVisibleMessage = lastMessage
-            }
-
-            chatViewModel.listenForNewMessages(chatId, currentUser.uid) { newMessage ->
-                messages = messages + newMessage
-
-                // Reset unread setiap kali ada pesan masuk yang diterima oleh pengguna
-                chatViewModel.resetUnreadMessages(chatId, currentUser.uid)
-
-                // Auto-scroll hanya jika pengguna sudah berada di bawah sebelum pesan masuk
-                coroutineScope.launch {
-                    val isAtBottom = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == messages.size - 2
-                    if (isAtBottom) {
-                        listState.animateScrollToItem(messages.size - 1)
-                    }
-                }
-            }
-        }
-
-        chatViewModel.getChatUser(chatId) { userData ->
-            chatUser = userData
-        }
-    }
-
-
-
-
 
 
 
@@ -224,9 +140,9 @@ fun ChatDetailScreen(
                 },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        UserProfileImage(chatUser.imageUrl, 40)
+                        UserProfileImage(otherUser.third, 40)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(chatUser.name)
+                        Text(otherUser.second)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -245,23 +161,26 @@ fun ChatDetailScreen(
             )
         },
         bottomBar = {
-            ChatInputField(
-                modifier = Modifier.imePadding(),
-                messageText = messageText.value,
-                onMessageChange = { messageText.value = it.replace("\n", "") },
-                onSendMessage = {
-                    if (messageText.value.isNotEmpty()) {
-                        user?.let {
-                            chatViewModel.sendMessage(
-                                chatId,
-                                messageText.value,
-                                it.uid,
-                            )
-                        }
-                        messageText.value = ""
-                    }
-                }
-            )
+//            ChatInputField(
+//                modifier = Modifier.imePadding(),
+//                messageText = messageText.value,
+//                onMessageChange = { messageText.value = it.replace("\n", "") },
+//                onSendMessage = {
+//                    if (messageText.value.isNotEmpty()) {
+//                        user?.let {
+//                            chatViewModel.sendMessage(
+//                                chatId,
+//                                messageText.value,
+//                                it,
+//                            )
+//                        }
+//                        messageText.value = ""
+//                    }
+//                }
+//            )
+
+
+            user?.let { ChatInputField(chatId, chatViewModel, it) }
         },
         floatingActionButton = {
             if (isFabVisible) { // FAB hanya muncul saat pengguna scroll ke atas
@@ -292,204 +211,217 @@ fun ChatDetailScreen(
 
 
     ) { paddingValues ->
-        MessageList(messages, user?.uid, paddingValues, listState, isLoadingMore)
-
-    }
-
-}
-
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ChatInputField(
-    modifier: Modifier = Modifier,
-    messageText: String,
-    onMessageChange: (String) -> Unit,
-    onSendMessage: () -> Unit
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Input Field dalam Card untuk tampilan lebih rapi
-        Card(
-            modifier = Modifier
-                .weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onPrimaryContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            TextField(
-                value = messageText,
-                onValueChange = onMessageChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 0.dp),
-                placeholder = { Text("Ketik pesan...") },
-                maxLines = 3,
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
-                textStyle = TextStyle(fontSize = 16.sp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Tombol Kirim
-        IconButton(
-            onClick = onSendMessage,
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-        ) {
-            Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
-        }
-    }
-}
-
-
-
-
-class TriangleEdgeShape(private val isUserMessage: Boolean) {
-    fun drawTriangle(size: androidx.compose.ui.geometry.Size): Path {
-        return Path().apply {
-            val triangleSize = 16f // Ukuran ekor runcing
-
-            if (isUserMessage) {
-                moveTo(size.width.toFloat(), size.height - triangleSize) // Mulai dari kanan bawah
-                lineTo(size.width.toFloat(), size.height.toFloat()) // Turun ke bawah
-                lineTo(size.width - triangleSize, size.height.toFloat()) // Geser ke kiri untuk ujung
-                close()
-            } else {
-                moveTo(0f, size.height - triangleSize) // Mulai dari kiri bawah
-                lineTo(0f, size.height.toFloat()) // Turun ke bawah
-                lineTo(triangleSize, size.height.toFloat()) // Geser ke kanan untuk ujung
-                close()
-            }
-        }
-    }
-}
-
-@Composable
-fun MessageBubble(message: Message, isUserMessage: Boolean) {
-    val bubbleColor = if (isUserMessage) Color(0xFF007AFF) else Color(0xFFE5E5EA)
-    val textColor = if (isUserMessage) Color.White else Color.Black
-    val cornerShape = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomStart = if (isUserMessage) 18.dp else 0.dp,
-        bottomEnd = if (isUserMessage) 0.dp else 18.dp
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUserMessage) Arrangement.End else Arrangement.Start
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-                .widthIn(max = 320.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .drawBehind {
-                        drawPath(
-                            path = TriangleEdgeShape(isUserMessage).drawTriangle(size),
-                            color = bubbleColor
-                        )
-                    }
-                    .background(bubbleColor, shape = cornerShape)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                reverseLayout = true
             ) {
-                Column {
-
-
-                    Text(
-                        text = if (message.status == "recalled") "Pesan telah ditarik" else message.content,
-                        fontStyle = if (message.status == "recalled") FontStyle.Italic else FontStyle.Normal,
-                        color = textColor,
-                        fontSize = 16.sp,
-                        lineHeight = 20.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.align(Alignment.End),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = formatTimeAgo(message.time),
-                            fontSize = 12.sp,
-                            color = textColor.copy(alpha = 0.6f)
-                        )
-
-                        Spacer(modifier = Modifier.width(4.dp))
-                        if (isUserMessage) {
-                            MessageStatusIcon(message.status)
-                        }
-                    }
-
+                items(messages) { message ->
+                    ChatBubble(message, isMe = message.senderId == user?.uid)
                 }
             }
-        }
-    }
-    Spacer(modifier = Modifier.height(6.dp))
-}
 
-
-
-@Composable
-fun MessageStatusIcon(status: String) {
-    when (status) {
-        "pending" -> Icon(Icons.Default.DateRange, contentDescription = "Pending")  // ⏳
-        "sent" -> Icon(Icons.Default.Check, contentDescription = "Sent")  // ✔
-        "delivered" -> Icon(Icons.Default.CheckCircle, contentDescription = "Delivered")  // ✔✔
-        "read" -> Icon(Icons.Default.CheckCircle, tint = Color.Blue, contentDescription = "Read")  // ✔✔ (biru)
-        "failed" -> Icon(Icons.Default.Clear, contentDescription = "Failed", tint = Color.Red)  // ❌
-    }
-}
-
-
-
-
-@Composable()
-fun MessageList(messages: List<Message>, currentUserId: String?, paddingValues: PaddingValues, listState: LazyListState = rememberLazyListState(), isLoadingMore: Boolean = false) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(horizontal = 16.dp),
-        state = listState, // Gunakan listState untuk kontrol scroll
-        reverseLayout = false // Pastikan tidak dibalik
-    ) {
-        // Indikator loading pagination di bagian atas
-        item {
-            if (isLoadingMore) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
-                }
+            if (isOtherUserTyping) {
+                TypingIndicator()
             }
         }
-        items(messages, key = { it.msgId }) { message ->
-            MessageBubble(message, isUserMessage = message.senderId == currentUserId)
-        }
+
     }
 
 }
+
+
+
+
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun ChatInputField(
+//    modifier: Modifier = Modifier,
+//    messageText: String,
+//    onMessageChange: (String) -> Unit,
+//    onSendMessage: () -> Unit
+//) {
+//    Row(
+//        modifier = modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 8.dp, vertical = 8.dp),
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        // Input Field dalam Card untuk tampilan lebih rapi
+//        Card(
+//            modifier = Modifier
+//                .weight(1f),
+//            shape = RoundedCornerShape(24.dp),
+//            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onPrimaryContainer),
+//            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+//        ) {
+//            TextField(
+//                value = messageText,
+//                onValueChange = onMessageChange,
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 8.dp, vertical = 0.dp),
+//                placeholder = { Text("Ketik pesan...") },
+//                maxLines = 3,
+//                colors = TextFieldDefaults.colors(
+//                    unfocusedContainerColor = Color.Transparent,
+//                    focusedContainerColor = Color.Transparent,
+//                    disabledContainerColor = Color.Transparent,
+//                    unfocusedIndicatorColor = Color.Transparent,
+//                    focusedIndicatorColor = Color.Transparent,
+//                    disabledIndicatorColor = Color.Transparent
+//                ),
+//                textStyle = TextStyle(fontSize = 16.sp)
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.width(8.dp))
+//
+//        // Tombol Kirim
+//        IconButton(
+//            onClick = onSendMessage,
+//            modifier = Modifier
+//                .size(48.dp)
+//                .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+//        ) {
+//            Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
+//        }
+//    }
+//}
+//
+//
+//
+//
+//class TriangleEdgeShape(private val isUserMessage: Boolean) {
+//    fun drawTriangle(size: androidx.compose.ui.geometry.Size): Path {
+//        return Path().apply {
+//            val triangleSize = 16f // Ukuran ekor runcing
+//
+//            if (isUserMessage) {
+//                moveTo(size.width.toFloat(), size.height - triangleSize) // Mulai dari kanan bawah
+//                lineTo(size.width.toFloat(), size.height.toFloat()) // Turun ke bawah
+//                lineTo(size.width - triangleSize, size.height.toFloat()) // Geser ke kiri untuk ujung
+//                close()
+//            } else {
+//                moveTo(0f, size.height - triangleSize) // Mulai dari kiri bawah
+//                lineTo(0f, size.height.toFloat()) // Turun ke bawah
+//                lineTo(triangleSize, size.height.toFloat()) // Geser ke kanan untuk ujung
+//                close()
+//            }
+//        }
+//    }
+//}
+
+//@Composable
+//fun MessageBubble(message: Message, isUserMessage: Boolean) {
+//    val bubbleColor = if (isUserMessage) Color(0xFF007AFF) else Color(0xFFE5E5EA)
+//    val textColor = if (isUserMessage) Color.White else Color.Black
+//    val cornerShape = RoundedCornerShape(
+//        topStart = 18.dp,
+//        topEnd = 18.dp,
+//        bottomStart = if (isUserMessage) 18.dp else 0.dp,
+//        bottomEnd = if (isUserMessage) 0.dp else 18.dp
+//    )
+//
+//    Row(
+//        modifier = Modifier.fillMaxWidth(),
+//        horizontalArrangement = if (isUserMessage) Arrangement.End else Arrangement.Start
+//    ) {
+//        Box(
+//            modifier = Modifier
+//                .padding(horizontal = 8.dp, vertical = 4.dp)
+//                .widthIn(max = 320.dp)
+//        ) {
+//            Box(
+//                modifier = Modifier
+//                    .drawBehind {
+//                        drawPath(
+//                            path = TriangleEdgeShape(isUserMessage).drawTriangle(size),
+//                            color = bubbleColor
+//                        )
+//                    }
+//                    .background(bubbleColor, shape = cornerShape)
+//                    .padding(horizontal = 14.dp, vertical = 10.dp)
+//            ) {
+//                Column {
+//
+//
+//                    Text(
+//                        text = if (message.status == "recalled") "Pesan telah ditarik" else message.content,
+//                        fontStyle = if (message.status == "recalled") FontStyle.Italic else FontStyle.Normal,
+//                        color = textColor,
+//                        fontSize = 16.sp,
+//                        lineHeight = 20.sp
+//                    )
+//                    Spacer(modifier = Modifier.height(6.dp))
+//                    Row(
+//                        modifier = Modifier.align(Alignment.End),
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        Text(
+//                            text = formatTimeAgo(message.time),
+//                            fontSize = 12.sp,
+//                            color = textColor.copy(alpha = 0.6f)
+//                        )
+//
+//                        Spacer(modifier = Modifier.width(4.dp))
+//                        if (isUserMessage) {
+//                            MessageStatusIcon(message.status)
+//                        }
+//                    }
+//
+//                }
+//            }
+//        }
+//    }
+//    Spacer(modifier = Modifier.height(6.dp))
+//}
+//
+//
+//
+//@Composable
+//fun MessageStatusIcon(status: String) {
+//    when (status) {
+//        "pending" -> Icon(Icons.Default.DateRange, contentDescription = "Pending")  // ⏳
+//        "sent" -> Icon(Icons.Default.Check, contentDescription = "Sent")  // ✔
+//        "delivered" -> Icon(Icons.Default.CheckCircle, contentDescription = "Delivered")  // ✔✔
+//        "read" -> Icon(Icons.Default.CheckCircle, tint = Color.Blue, contentDescription = "Read")  // ✔✔ (biru)
+//        "failed" -> Icon(Icons.Default.Clear, contentDescription = "Failed", tint = Color.Red)  // ❌
+//    }
+//}
+//
+//
+//
+//
+//@Composable()
+//fun MessageList(messages: List<Message>, currentUserId: String?, paddingValues: PaddingValues, listState: LazyListState = rememberLazyListState(), isLoadingMore: Boolean = false) {
+//    LazyColumn(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(paddingValues)
+//            .padding(horizontal = 16.dp),
+//        state = listState, // Gunakan listState untuk kontrol scroll
+//        reverseLayout = false // Pastikan tidak dibalik
+//    ) {
+//        // Indikator loading pagination di bagian atas
+//        item {
+//            if (isLoadingMore) {
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(8.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    CircularProgressIndicator(
+//                        modifier = Modifier.size(24.dp),
+//                        strokeWidth = 2.dp
+//                    )
+//                }
+//            }
+//        }
+////        items(messages, key = { it.msgId }) { message ->
+////            MessageBubble(message, isUserMessage = message.senderId == currentUserId)
+////        }
+//    }
+//
+//}
