@@ -7,9 +7,9 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Window
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,20 +23,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.provider.FontRequest
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.emoji2.bundled.BundledEmojiCompatConfig
+import androidx.emoji2.text.EmojiCompat
+import androidx.emoji2.text.FontRequestEmojiCompatConfig
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.example.test.ui.MainScreen
 import com.example.test.ui.screens.User
 import com.example.test.ui.theme.TestTheme
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.test.ui.viewModels.ChatViewModel
 import com.google.firebase.FirebaseException
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ServerValue
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,17 +59,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.Date
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 
 class AuthRepository {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val realtimeDb = FirebaseDatabase.getInstance().reference
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     private val _verificationId = MutableStateFlow<String?>(null)
@@ -90,8 +106,8 @@ class AuthRepository {
             "user_id" to user.uid,
             "device" to deviceInfo,
             "ip_address" to getPublicIpAddress(),
-            "login_time" to System.currentTimeMillis(),
-            "expires_at" to System.currentTimeMillis() + (24 * 60 * 60 * 1000) // 24 jam sesi
+            "login_time" to Timestamp.now(),
+            "expires_at" to Timestamp.now()
         )
 
         firestore.collection("sessions").document(user.uid)
@@ -242,7 +258,8 @@ class AuthRepository {
                         "uid" to user.uid,
                         "phone" to user.phoneNumber,
                         "isProfileComplete" to false,
-                        "createdAt" to System.currentTimeMillis()
+                        "isOnline" to false,
+                        "createdAt" to Timestamp.now()
                     )
                     userRef.set(newUser).addOnSuccessListener {
                         Log.d("AuthRepository", "User baru dibuat dengan isProfileComplete = false")
@@ -260,6 +277,43 @@ class AuthRepository {
             onError("Pengguna tidak ditemukan.")
         }
     }
+
+    fun updateUserStatus(isOnline: Boolean, userId: String) {
+        val realtimeDbRef = FirebaseDatabase.getInstance().getReference("users").child(userId)
+        val firestoreDbRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+
+        Log.d("FirebaseDB", "Updating status for user: $userId, isOnline: $isOnline")
+
+        val statusData = mapOf(
+            "isOnline" to isOnline,
+            "lastSeen" to Timestamp.now()
+        )
+
+        // ✅ Update status di Firestore
+        firestoreDbRef.update(statusData)
+            .addOnSuccessListener { Log.d("Firestore", "User status updated in Firestore") }
+            .addOnFailureListener { Log.e("Firestore", "Failed to update user status in Firestore", it) }
+
+        // ✅ Update status di Realtime Database
+        if (isOnline) {
+            realtimeDbRef.setValue(mapOf("isOnline" to true))
+            realtimeDbRef.onDisconnect().setValue(mapOf(
+                "isOnline" to false,
+                "lastSeen" to Timestamp.now()
+            ))
+        } else {
+            realtimeDbRef.setValue(mapOf(
+                "isOnline" to false,
+                "lastSeen" to Timestamp.now()
+            ))
+        }
+    }
+
+
+
+
+
+
 
 
     /**
@@ -298,14 +352,16 @@ class AuthViewModel @Inject constructor(
     init {
         fetchUserData()
     }
-
+    fun updateUserStatusRealtime(isOnline: Boolean, userId: String) {
+        authRepository.updateUserStatus(isOnline, userId)
+    }
 
 
     fun sendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
         authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
     }
 
-    fun fetchUserData() {
+    private fun fetchUserData() {
         authRepository.fetchUserData()
     }
 
@@ -343,6 +399,7 @@ fun DashboardScreen(navController: NavHostController, authViewModel: AuthViewMod
                 }
         }
     }
+
 
     if (user == null) {
         LaunchedEffect(Unit) {
@@ -403,25 +460,89 @@ fun AdminScreen(navController: NavHostController, authViewModel: AuthViewModel) 
 }
 
 
+class AuthViewModelFactory(private val authRepository: AuthRepository) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return AuthViewModel(authRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+
 
 
 
 
 class MainActivity : ComponentActivity() {
+    private lateinit var authViewModel: AuthViewModel
+
+    companion object {
+
+        private const val TAG = "EmojiCompatApplication"
+
+        /** Change this to `false` when you want to use the downloadable Emoji font.  */
+        private const val USE_BUNDLED_EMOJI = true
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge() // ✅ Aktifkan mode Edge-to-Edge
+        enableEdgeToEdge()
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true)
         super.onCreate(savedInstanceState)
+
+        val fontRequest = FontRequest(
+            "com.google.android.gms.fonts",
+            "com.google.android.gms",
+            "Noto Color Emoji Compat",
+            R.array.com_google_android_gms_fonts_certs
+        )
+        val config = FontRequestEmojiCompatConfig(applicationContext, fontRequest)
+        EmojiCompat.init(config)
+
+        // ✅ Inisialisasi Repository
+        val authRepository = AuthRepository()
+
+        // ✅ Gunakan ViewModelProvider dengan Factory
+        authViewModel = ViewModelProvider(
+            this,
+            AuthViewModelFactory(authRepository)
+        )[AuthViewModel::class.java]
 
         setContent {
             TestTheme {
-                val authViewModel = remember { AuthViewModel(
-                    authRepository = AuthRepository()
-                ) } // ✅ Gunakan remember agar tidak reset saat recomposition
                 MainScreen(authViewModel)
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+
+        lifecycleScope.launch {
+            authViewModel.user.collectLatest { user ->
+                user?.uid?.let { userId ->
+                    Log.d("FirebaseDB", "User $userId is now ONLINE")
+                    authViewModel.updateUserStatusRealtime(true, userId) // ✅ Pastikan hanya dipanggil jika user valid
+                }
+            }
+        }
+    }
+
+
+    override fun onStop() {
+        super.onStop()
+        val userId = authViewModel.user.value?.uid
+        if (userId != null) {
+            Log.d("FirebaseDB", "User $userId is now OFFLINE")
+            authViewModel.updateUserStatusRealtime(false, userId) // ✅ Set offline saat aplikasi ditutup
+        }
+    }
 }
+
+
+
 
 
 @SuppressLint("ComposableNaming")

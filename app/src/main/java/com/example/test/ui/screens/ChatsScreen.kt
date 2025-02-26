@@ -141,7 +141,7 @@ fun ChatsScreen(
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(bottom = 16.dp) // Sesuaikan posisi FAB
+                modifier = Modifier.padding(bottom = 80.dp)
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Buat Pesan Baru")
             }
@@ -151,10 +151,8 @@ fun ChatsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = paddingValues.calculateBottomPadding()
-                )
+                .padding(top = innerPadding.calculateTopPadding(), // Jaga jarak dari AppBar
+                    bottom = paddingValues.calculateBottomPadding()) // Hindari tumpang tindih BottomNav)
         ) {
             // Pencarian
             OutlinedTextField(
@@ -163,12 +161,11 @@ fun ChatsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .height(48.dp),
-                placeholder = { Text("Cari chat atau pengguna...", fontSize = 14.sp) },
+                    .padding(vertical = 8.dp),
+                placeholder = { Text("Cari chat atau pengguna...")},
                 shape = CircleShape,
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 14.sp),
             )
 
             // Filter Chat
@@ -189,8 +186,6 @@ fun ChatsScreen(
             // Daftar Chat
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(filteredChats) { chat ->
                     val otherUserId = chat.participants.firstOrNull { it != user?.uid }

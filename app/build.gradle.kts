@@ -46,7 +46,16 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-database")
+    implementation(libs.androidx.emoji2.bundled)
+    implementation(libs.androidx.emoji2.emojipicker)
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+    implementation("androidx.compose.ui:ui-viewbinding:1.6.0") // Atau versi terbaru
 
+    val emoji2_version = "1.5.0"
+    implementation("androidx.emoji2:emoji2:$emoji2_version")
+    implementation("androidx.emoji2:emoji2-views:$emoji2_version")
+    implementation("androidx.emoji2:emoji2-views-helper:$emoji2_version")
     implementation ("com.google.android.gms:play-services-base:18.2.0")
     implementation("androidx.hilt:hilt-navigation-fragment:1.0.0")
     implementation("io.coil-kt.coil3:coil-compose:3.1.0")

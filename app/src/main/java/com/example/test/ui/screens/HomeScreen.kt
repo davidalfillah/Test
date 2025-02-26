@@ -71,6 +71,7 @@ import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.charitys
 import com.example.test.ui.dataTest.products
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -91,10 +92,12 @@ data class User(
     val uid: String = "",
     val name: String = "",
     val phone: String = "",
+    val lastSeen: Timestamp? = Timestamp.now(),
+    val isOnline: Boolean = false,
     val role: String = "user",
     val profilePicUrl: String = "",
     var isProfileComplete: Boolean = false,
-    val createdAt: Long = 0
+    val createdAt: Timestamp = Timestamp.now()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
