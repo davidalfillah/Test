@@ -326,6 +326,8 @@ class AuthRepository {
         deleteSession(userId) // Hapus sesi dari Firestore
         auth.signOut()
 
+        updateUserStatus(isOnline = false, userId)
+
         _authState.value = null
         _user.value = null
     }

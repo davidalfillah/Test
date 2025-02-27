@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,22 +30,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.test.R
 import com.example.test.ui.dataType.Message
 
 @Composable
 fun ChatBubble(message: Message, isMe: Boolean) {
-    val bubbleColor = if (isMe) Color(0xFF007AFF) else Color(0xFFE5E5EA)
-    val textColor = if (isMe) Color.White else Color.Black
-    val statusIcon = when (message.status) {
-        "sent" -> Icons.Default.Check  // Jam (⏳)
-        "delivered" -> Icons.Default.Check  // Centang 1 (✔)
-        "read" -> Icons.Default.CheckCircle  // Centang 2 (✔✔)
-        else -> Icons.Default.DateRange
+    val bubbleColor = if (isMe) MaterialTheme.colorScheme.surfaceVariant else Color.White
+    val textColor = if (isMe) Color.Black else Color.Black
+    val statusIcon = when {
+        message.unreadBy.isEmpty() -> R.drawable.baseline_done_all_24  // ✅ Semua sudah membaca (✔✔)
+        else -> R.drawable.baseline_done_all_24  // ⏳ Masih ada yang belum membaca (✔)
     }
+
 
 
     val cornerShape = RoundedCornerShape(
@@ -78,9 +81,9 @@ fun ChatBubble(message: Message, isMe: Boolean) {
                 if(isMe) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
-                        imageVector = statusIcon,
+                        imageVector = ImageVector.vectorResource(statusIcon),
                         contentDescription = "Message Status",
-                        tint = if (message.status == "read") Color.Blue else textColor.copy(0.7f),
+                        tint = if (message.unreadBy.isEmpty()) Color.Blue else textColor.copy(0.7f),
                         modifier = Modifier.size(12.dp)
                     )
                 }

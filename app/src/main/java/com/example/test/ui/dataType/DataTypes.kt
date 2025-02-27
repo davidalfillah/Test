@@ -15,7 +15,8 @@ data class Chat(
     val lastMessageTimestamp: Timestamp = Timestamp.now(),
     val lastSenderId: String = "", // ID pengirim pesan terakhir,
     val isGroup: Boolean = false, // Apakah chat ini grup?
-    val unreadCount: Map<String, Int> = mapOf()
+    val unreadCount: Map<String, Int> = mapOf(),
+    val lastUnreadBy: List<String> = listOf() // ✅ Tambahkan ini
 )
 
 data class Message(
@@ -26,12 +27,12 @@ data class Message(
     val mediaUrl: String? = null, // URL media (jika ada)
     val mediaType: String = "text", // Jenis media (text, image, video, file, audio, sticker)
     val timestamp: Timestamp = Timestamp.now(),
-    val status: String = "sent", // Status pesan (sent, delivered, read)
+    val unreadBy: List<String> = listOf(), // ✅ Menyimpan user yang BELUM membaca
     val replyTo: String? = null, // ID pesan yang dibalas
     val reactions: Map<String, String> = mapOf(), // Reaksi emoji per user (userId -> emoji)
     val forwarded: Boolean = false, // Apakah pesan diteruskan?
     val edited: Boolean = false, // Apakah pesan sudah diedit?
-    val deletedForEveryone: Boolean = false // Apakah pesan ditarik?
+    val deletedForEveryone: Boolean = false, // Apakah pesan ditarik?
 )
 
 data class MessageStatus(

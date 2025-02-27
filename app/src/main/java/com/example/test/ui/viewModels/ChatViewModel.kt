@@ -13,6 +13,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.firestore.ktx.toObjects
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -50,53 +51,98 @@ class ChatViewModel : ViewModel() {
             val chat = snapshot?.toObject(Chat::class.java)?.copy(chatId = snapshot.id)
 
             if (chat != null) {
-                val participantsInfo = mutableMapOf<String, User?>()
+                launch {
+                    val participantsInfo = mutableMapOf<String, User?>()
 
-                val jobs = chat.participants.map { userId ->
-                    async {
+                    chat.participants.forEach { userId ->
                         val userSnapshot = db.collection("users").document(userId).get().await()
                         val user = userSnapshot.toObject(User::class.java)
                         participantsInfo[userId] = user // 🔥 Simpan dalam Map
                     }
-                }
 
-                GlobalScope.launch {
-                    jobs.awaitAll()
                     trySend(chat.copy(participantsInfo = participantsInfo)) // ✅ Pakai Map<String, User?>
                 }
             } else {
                 trySend(null)
             }
         }
+
         awaitClose { listener.remove() }
     }
 
 
 
 
-    fun getMessages(chatId: String): Flow<List<Message>> = callbackFlow {
-        val query = db.collection("chats").document(chatId)
-            .collection("messages")
+
+    fun getMessages(chatId: String, userId: String): Flow<List<Message>> = callbackFlow {
+        val chatRef = db.collection("chats").document(chatId)
+        val query = chatRef.collection("messages")
             .orderBy("timestamp", Query.Direction.DESCENDING)
 
         val listener = query.addSnapshotListener { snapshot, _ ->
             val messages = snapshot?.documents?.mapNotNull { it.toObject(Message::class.java) } ?: emptyList()
             trySend(messages)
+
+            // 🔥 Jalankan coroutine di dalam `callbackFlow`
+            launch {
+                val chatSnapshot = chatRef.get().await()
+                val chat = chatSnapshot.toObject(Chat::class.java)
+
+                chat?.let {
+                    if (it.lastSenderId != userId) {
+                        resetUnreadCount(chatId, userId)
+                        markMessagesAsRead(chatId, userId)
+                    }
+                }
+            }
         }
+
         awaitClose { listener.remove() }
     }
 
-//    fun sendMessage(chatId: String, text: String, user: User) {
-//        val newMessage = Message(
-//            senderId = user.uid ?: "",
-//            text = text,
-//            timestamp = Timestamp.now()
-//        )
-//
-//        db.collection("chats").document(chatId)
-//            .collection("messages")
-//            .add(newMessage)
-//    }
+
+    suspend fun markMessagesAsRead(chatId: String, userId: String) {
+        val chatRef = db.collection("chats").document(chatId)
+        val messagesRef = chatRef.collection("messages")
+
+        try {
+            // 🔥 Ambil semua pesan yang masih memiliki unreadBy = userId sebelum transaksi
+            val snapshot = messagesRef.whereArrayContains("unreadBy", userId).get().await()
+
+            db.runTransaction { transaction ->
+                val chatSnapshot = transaction.get(chatRef)
+                val lastUnreadBy = chatSnapshot.get("lastUnreadBy") as? List<String> ?: listOf()
+
+                val updatedUnreadBy = lastUnreadBy.filter { it != userId }
+
+                // 🔥 Update setiap pesan untuk menghapus userId dari unreadBy
+                for (doc in snapshot.documents) {
+                    transaction.update(doc.reference, "unreadBy", FieldValue.arrayRemove(userId))
+                }
+
+                // 🔥 Perbarui lastUnreadBy di chat untuk tracking pesan belum dibaca
+                transaction.update(chatRef, "lastUnreadBy", updatedUnreadBy)
+            }
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error marking messages as read: ${e.message}")
+        }
+    }
+
+
+
+
+
+
+    fun deleteMessageForEveryone(chatId: String, messageId: String) {
+        db.collection("chats").document(chatId)
+            .collection("messages").document(messageId)
+            .update(
+                "text", "Pesan telah dihapus",
+                "mediaUrl", null,
+                "deletedForEveryone", true
+            )
+    }
+
 
     fun updateTypingStatus(chatId: String, isTyping: Boolean, user: User) {
         val chatRef = db.collection("chats").document(chatId)
@@ -119,13 +165,6 @@ class ChatViewModel : ViewModel() {
         }
         awaitClose { listener.remove() }
     }
-
-
-
-
-
-
-
 
 
 
@@ -181,6 +220,8 @@ class ChatViewModel : ViewModel() {
 
 
 
+
+
     // Pencarian dan filter dalam data yang sudah ada (tanpa query ulang ke Firestore)
     fun searchChats(query: String, filter: String) {
         val filtered = _chats.value.filter {
@@ -215,83 +256,95 @@ class ChatViewModel : ViewModel() {
             }
     }
 
-    // Mengirim pesan baru
-    fun sendMessage(chatId: String, senderId: String, text: String?, mediaUrl: String?, mediaType: String) {
+    fun sendMessage(
+        chatId: String,
+        senderId: String,
+        text: String?,
+        mediaUrl: String?,
+        mediaType: String,
+        participants: List<String>
+    ) {
+        require(participants.isNotEmpty()) { "Participants list cannot be empty" } // 🔥 Pastikan peserta ada
+
         val messageId = db.collection("chats").document(chatId)
             .collection("messages").document().id
+
+        Log.d("sendMessage", "Participants: $participants") // 🔥 Debugging
+
+        val unreadBy = participants.filter { it != senderId } // 🚀 Semua user kecuali pengirim
 
         val message = Message(
             messageId = messageId,
             senderId = senderId,
-            text = text,
+            text = text?.takeIf { it.isNotBlank() }, // 🔥 Hindari pesan kosong
             mediaUrl = mediaUrl,
             mediaType = mediaType,
             timestamp = Timestamp.now(),
-            status = "sent"
+            unreadBy = unreadBy
         )
 
-        db.collection("chats").document(chatId)
-            .collection("messages").document(messageId).set(message)
+        val chatRef = db.collection("chats").document(chatId)
 
-        // Update last message di chat
-        db.collection("chats").document(chatId).update(
-            "lastMessage", text ?: "Media",
-            "lastMessageType", mediaType,
-            "lastMessageTimestamp", Timestamp.now(),
-            "lastSenderId", senderId
-        )
-    }
+        // 🚀 Simpan pesan ke Firestore
+        chatRef.collection("messages").document(messageId).set(message)
+            .addOnSuccessListener {
+                Log.d("sendMessage", "Message sent successfully!")
 
-    fun getUnreadCount(chatId: String, userId: String, onResult: (Int) -> Unit) {
-        db.collection("chats").document(chatId)
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot != null && snapshot.exists()) {
-                    val unreadData = snapshot.get("unreadCount") as? Map<String, Long>
-                    val unreadCount = unreadData?.get(userId)?.toInt() ?: 0
-                    onResult(unreadCount)
-                }
+                // ✅ Update informasi chat terakhir
+                chatRef.update(
+                    "lastMessage", text ?: "Media",
+                    "lastMessageType", mediaType,
+                    "lastMessageTimestamp", Timestamp.now(),
+                    "lastSenderId", senderId,
+                    "lastUnreadBy", unreadBy // ✅ Simpan user yang belum membaca
+                )
+
+                // 🚀 Tambahkan unread count untuk semua user kecuali pengirim
+                incrementUnreadCount(chatId, senderId)
+            }
+            .addOnFailureListener { e ->
+                Log.e("sendMessage", "Failed to send message: ${e.message}")
             }
     }
 
-    fun markChatAsRead(chatId: String, userId: String) {
-        db.collection("chats").document(chatId)
-            .update("unreadCount.$userId", 0)
+
+    private fun incrementUnreadCount(chatId: String, senderId: String) {
+        val chatRef = FirebaseFirestore.getInstance().collection("chats").document(chatId)
+
+        chatRef.get().addOnSuccessListener { document ->
+            val chat = document.toObject(Chat::class.java)
+            chat?.let {
+                val updates = mutableMapOf<String, Any>()
+
+                // Tambah unreadCount untuk semua user KECUALI pengirim
+                it.participants.forEach { userId ->
+                    if (userId != senderId) {
+                        updates["unreadCount.$userId"] = FieldValue.increment(1)
+                    }
+                }
+
+                // Update Firestore secara atomik
+                chatRef.update(updates)
+            }
+        }
     }
 
-    // Menarik pesan (hapus untuk semua orang)
-    fun deleteMessageForEveryone(chatId: String, messageId: String) {
-        db.collection("chats").document(chatId)
-            .collection("messages").document(messageId)
-            .update("deletedForEveryone", true)
-    }
 
-    // Menyimpan status mengetik
-    fun setTypingStatus(chatId: String, userId: String, isTyping: Boolean) {
-        db.collection("typingStatus").document(chatId)
-            .update(userId, isTyping)
-    }
+    private fun resetUnreadCount(chatId: String, userId: String) {
+        val chatRef = db.collection("chats").document(chatId)
 
-    // Update status pesan (sent -> delivered -> read)
-    fun updateMessageStatus(chatId: String, messageId: String, status: String) {
-        db.collection("chats").document(chatId)
-            .collection("messages").document(messageId)
-            .update("status", status)
-    }
-
-    // Menandai semua pesan dalam chat sebagai "read" saat pengguna membuka chat
-    fun markMessagesAsRead(chatId: String, userId: String) {
-        viewModelScope.launch {
-            val messagesRef = db.collection("chats").document(chatId)
-                .collection("messages")
-                .whereNotEqualTo("senderId", userId) // Hanya untuk pesan yang dikirim orang lain
-
-            messagesRef.get().addOnSuccessListener { documents ->
-                for (doc in documents) {
-                    doc.reference.update("status", "read")
+        chatRef.get().addOnSuccessListener { document ->
+            val chat = document.toObject(Chat::class.java)
+            chat?.let {
+                // 🔥 Hanya reset jika user BUKAN pengirim pesan terakhir
+                if (it.lastSenderId != userId) {
+                    chatRef.update("unreadCount.$userId", 0)
                 }
             }
         }
     }
+
+
 
     // Set user online saat membuka aplikasi
     fun setUserOnline(userId: String, isOnline: Boolean) {
@@ -354,7 +407,7 @@ class ChatViewModel : ViewModel() {
     }
 
 
-    fun getOrCreateChat(userId: String, otherUserId: String, onResult: (String) -> Unit) {
+    private fun getOrCreateChat(userId: String, otherUserId: String, onResult: (String) -> Unit) {
         db.collection("chats")
             .whereEqualTo("isGroup", false)
             .whereArrayContains("participants", userId)
@@ -405,7 +458,8 @@ class ChatViewModel : ViewModel() {
                     sendMessage(
                         chatId, senderId, message,
                         mediaUrl = TODO(),
-                        mediaType = TODO()
+                        mediaType = TODO(),
+                        participants = listOf(senderId, otherUserId)
                     )
                 }
             } else {

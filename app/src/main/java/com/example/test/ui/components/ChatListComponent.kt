@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,16 +58,12 @@ import java.util.Locale
 @Composable
 fun ChatItemComponent(chat: Chat, onClick: (Chat) -> Unit, otherUserProfileUrl: String?, otherUserId: String?, userUid: String?, chatViewModel: ChatViewModel) {
     val name = if (chat.isGroup) chat.groupName ?: "Grup Tanpa Nama" else otherUserId ?: "Unknown"
-    var unreadCount by remember { mutableStateOf(0) }
 
     val otherUser = chat.participantsInfo.values.firstOrNull { it?.uid != userUid }
 
-    LaunchedEffect(chat.chatId) {
-        if (userUid != null) {
-            chatViewModel.getUnreadCount(chat.chatId, userUid) { count ->
-                unreadCount = count
-            }
-        }
+    val statusIcon = when {
+        chat.lastUnreadBy.isEmpty() -> R.drawable.baseline_done_all_24  // ✅ Semua sudah membaca (✔✔)
+        else -> R.drawable.baseline_done_all_24  // ⏳ Masih ada yang belum membaca (✔)
     }
 
     Row(
@@ -87,10 +84,17 @@ fun ChatItemComponent(chat: Chat, onClick: (Chat) -> Unit, otherUserProfileUrl: 
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 otherUser?.name?.let { Text(text = it, fontWeight = FontWeight.Bold) }
-                Row {
-//                    if(isUserMessage){
-//                        MessageStatusIcon(message.status)
-//                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if(chat.lastSenderId == userUid){
+                        Icon(
+                            imageVector = ImageVector.vectorResource(statusIcon),
+                            contentDescription = "Message Status",
+                            tint = if (chat.lastUnreadBy.isEmpty()) Color.Blue else Color.Gray.copy(0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = chat.lastMessage,
                         fontSize = 14.sp,
@@ -107,15 +111,20 @@ fun ChatItemComponent(chat: Chat, onClick: (Chat) -> Unit, otherUserProfileUrl: 
             modifier = Modifier.fillMaxHeight(),
             horizontalAlignment = Alignment.End
         ) {
+
             Text(
                 text = formatTimeAgo(chat.lastMessageTimestamp), // ✅ Format waktu
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = if(chat.unreadCount[userUid]!! > 0 ) {
+                    MaterialTheme.colorScheme.primary
+                }else{
+                    Color.Gray
+                }
             )
 
             Spacer(modifier = Modifier.height(4.dp)) // Jarak antara waktu dan badge
 
-            if (unreadCount > 0) {
+            if (chat.lastSenderId != userUid && chat.unreadCount[userUid]!! > 0) {
                 Box(
                     modifier = Modifier
                         .size(20.dp)
@@ -123,7 +132,7 @@ fun ChatItemComponent(chat: Chat, onClick: (Chat) -> Unit, otherUserProfileUrl: 
                         .wrapContentSize(Alignment.Center)
                 ) {
                     Text(
-                        text = unreadCount.toString(),
+                        text = chat.unreadCount[userUid].toString(),
                         fontSize = 12.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -150,16 +159,7 @@ fun formatTimeAgo(timestamp: Timestamp?): String {
     }
 }
 
-@Composable
-fun MessageStatusIcon(status: String) {
-    when (status) {
-        "pending" -> Icon(Icons.Default.DateRange, contentDescription = "Pending")  // ⏳
-        "sent" -> Icon(Icons.Default.Check, contentDescription = "Sent")  // ✔
-        "delivered" -> Icon(Icons.Default.CheckCircle, contentDescription = "Delivered")  // ✔✔
-        "read" -> Icon(Icons.Default.CheckCircle, tint = Color.Blue, contentDescription = "Read")  // ✔✔ (biru)
-        "failed" -> Icon(Icons.Default.Clear, contentDescription = "Failed", tint = Color.Red)  // ❌
-    }
-}
+
 
 
 

@@ -60,7 +60,7 @@ import java.io.InputStreamReader
 
 @RequiresApi(Build.VERSION_CODES.R)
 @Composable
-fun ChatInputField(chatId: String, chatViewModel: ChatViewModel, user: User) {
+fun ChatInputField(chatId: String, chatViewModel: ChatViewModel, user: User, participants: List<String>) {
     var text by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -150,13 +150,16 @@ fun ChatInputField(chatId: String, chatViewModel: ChatViewModel, user: User) {
             // Tombol Kirim
             IconButton(
                 onClick = {
+                    val senderId = user.uid ?: return@IconButton // 🔥 Hindari NullPointerException
+
                     if (text.isNotBlank()) {
                         chatViewModel.sendMessage(
                             chatId = chatId,
-                            senderId = user.uid ?: "",
+                            senderId = senderId,
                             text = text,
-                            mediaUrl = "",
-                            mediaType = ""
+                            mediaUrl = null, // 🔥 Gunakan null jika tidak ada media
+                            mediaType = "text", // 🔥 Pastikan mediaType sesuai
+                            participants = participants
                         )
                         text = ""
                     }
@@ -165,8 +168,9 @@ fun ChatInputField(chatId: String, chatViewModel: ChatViewModel, user: User) {
                     .size(48.dp)
                     .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White)
+                Icon(imageVector = Icons.Default.Send, contentDescription = "Kirim Pesan")
             }
+
         }
 
         // Emoji Picker View (Gunakan Jetpack Compose)
