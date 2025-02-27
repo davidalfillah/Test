@@ -1,6 +1,8 @@
 package com.example.test.ui
 
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -40,11 +42,14 @@ import com.example.test.ui.screens.NewsDetailScreen
 import com.example.test.ui.screens.NewsScreen
 import com.example.test.ui.screens.OtpScreen
 import com.example.test.ui.screens.ProfileSetupScreen
+import com.example.test.ui.screens.RegistrationScreen
+import com.example.test.ui.screens.RegistrationUmkmScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 import com.example.test.ui.viewModels.ChatViewModel
 
+@RequiresApi(Build.VERSION_CODES.R)
 @Composable
 fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
     val navController = rememberNavController()
@@ -81,6 +86,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     "news",
                     "status",
                     "success?nextScreen={nextScreen}",
+                    "registerGrib",
+                    "registerUmkm",
                     "profile_setup",
                     "chat_detail/{chatId}",
                     "news_detail/{newsId}",
@@ -102,6 +109,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("home") { HomeScreen(navController,
                 PaddingValues, authViewModel) }
             composable("status") { StatusScreen(navController) }
+            composable("registerGrib") { RegistrationScreen(paddingValues = PaddingValues, navController, authViewModel = authViewModel) }
+            composable("registerUmkm") { RegistrationUmkmScreen(paddingValues = PaddingValues, navController, authViewModel = authViewModel) }
             composable("profile_setup") { ProfileSetupScreen(navController, authViewModel, paddingValues = PaddingValues) }
             composable(
                 "success?nextScreen={nextScreen}",
@@ -170,6 +179,7 @@ fun BottomNavigationBar(navController: NavHostController) {
 data class BottomNavItem(val route: String, val title: String, val icon: ImageVector)
 
 
+@RequiresApi(Build.VERSION_CODES.R)
 @Preview(showBackground = true)
 @Composable
 fun PreviewMainScreen() {

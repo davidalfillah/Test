@@ -102,7 +102,11 @@ data class User(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, authViewModel: AuthViewModel) {
+fun HomeScreen(
+    navController: NavHostController,
+    paddingValues: PaddingValues,
+    authViewModel: AuthViewModel
+) {
     val user by authViewModel.user.collectAsState()
     val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
 
@@ -145,232 +149,321 @@ fun HomeScreen(navController: NavHostController, paddingValues: PaddingValues, a
             )
         }
     ) { innerPadding ->
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = innerPadding.calculateTopPadding(), // Jaga jarak dari AppBar
-                bottom = paddingValues.calculateBottomPadding()) // Hindari tumpang tindih BottomNav)
-            .verticalScroll(rememberScrollState())
-    ) {
-        if(user != null){
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
-            ) {
-                Box(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    top = innerPadding.calculateTopPadding(), // Jaga jarak dari AppBar
+                    bottom = paddingValues.calculateBottomPadding()
+                ) // Hindari tumpang tindih BottomNav)
+                .verticalScroll(rememberScrollState())
+        ) {
+            if (user != null) {
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-                            Column {
-                                Text(text = "Iuran Anggota Bulanan", fontSize = 14.sp, color = Color.White)
-                                Text(text = "Rp.10.000", fontWeight = FontWeight.Bold, fontSize = 36.sp)
-                                Text(text = "Iuran bulan April - 2025", fontSize = 14.sp, color = Color.White)
-                            }
-                            Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(
+                                        1f,
+                                        false
+                                    ) // Perbaikan: Memberi ruang agar tombol tidak terdesak
+                                ) {
+
+                                    UserProfileImage(user?.profilePicUrl, 64)
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Hai, ${user?.name}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan teks tidak memakan seluruh ruang
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp)) // Perbaikan: Tambahkan jarak agar tidak terlalu rapat
+
                                 Button(
-                                    onClick = {  },
+                                    onClick = { },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
                                         contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
                                     ),
-
-
-                                    ) {
-                                    Text(text = "Bayar")
+                                    modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan tombol tidak dipaksa melebar
+                                ) {
+                                    Text(
+                                        text = "Ajak Teman",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.wrapContentWidth()
+                                    )
                                 }
                             }
+
+
                         }
-
-
                     }
                 }
-            }
-        }
-        Box(modifier = Modifier.height(77.dp).fillMaxWidth().background(color = MaterialTheme.colorScheme.primary))
-        Column(modifier = Modifier.offset(y = (-75).dp)){
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth().padding(16.dp),
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(0.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Anda Belum Masuk",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        text = "Silaklan masuk untuk melanjutkan",
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                Button(
+                                    onClick = { navController.navigate("login") },
 
-                )
-            {
-                Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-                    if(user != null){
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
+                                        contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
+                                    ),
+                                ) {
+                                    Text(text = "Log In")
+                                }
+                            }
+
+
+                        }
+                    }
+                }
+
+            }
+            Box(
+                modifier = Modifier
+                    .height(77.dp)
+                    .fillMaxWidth()
+                    .background(color = MaterialTheme.colorScheme.primary)
+            )
+            Column(modifier = Modifier.offset(y = (-75).dp)) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+
+                    )
+                {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 16.dp)
+                    ) {
+                        if (user != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween // Perbaikan: Ubah dari SpaceBetween ke Start
+                            ) {
+                                Column {
+//                                    Text(
+//                                        text = "Iuran Anggota Bulanan",
+//                                        fontSize = 12.sp,
+//                                        color = Color.White
+//                                    )
+                                    Text(
+                                        text = "Rp.10.000",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 24.sp,
+                                        lineHeight = 28.sp,
+                                        color = Color.Black,
+                                    )
+                                    Text(
+                                        text = "Iuran bulan April - 2025",
+                                        fontSize = 12.sp,
+                                        lineHeight = 14.sp,
+                                        color = Color.Black.copy(alpha = 0.5f),
+                                    )
+                                }
+                                Column {
+                                    Button(
+                                        onClick = { },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = Color.White
+                                        ),
+
+                                        ) {
+                                        Text(text = "Bayar")
+                                    }
+                                }
+
+                            }
+
+                        }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .padding(top = 16.dp)
                                 .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween // Perbaikan: Ubah dari SpaceBetween ke Start
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f, false) // Perbaikan: Memberi ruang agar tombol tidak terdesak
-                            ) {
+                            val items = listOf(
+                                "News" to R.drawable.baseline_newspaper_24,
+                                "UMKM" to R.drawable.baseline_storefront_24,
+                                "Gabung GRIB" to R.drawable.baseline_card_membership_24,
+                                "Donasi" to R.drawable.baseline_wallet_24
+                            )
 
-                                UserProfileImage(user?.profilePicUrl, 42)
-
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = user?.name ?: "User",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan teks tidak memakan seluruh ruang
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp)) // Perbaikan: Tambahkan jarak agar tidak terlalu rapat
-
-                            Button(
-                                onClick = { },
-                                modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan tombol tidak dipaksa melebar
-                            ) {
-                                Text(
-                                    text = "Ajak Teman",
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.wrapContentWidth()
-                                )
-                            }
-                        }
-
-
-                    }else{
-                        Row (verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween){
-                            Text(text = "Anda Belum Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Button(
-                                onClick = { navController.navigate("login") },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = Color.White
-                                ),
-                            ) {
-                                Text(text = "Log In")
-                            }
-                        }
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val items = listOf(
-                            "News" to R.drawable.baseline_newspaper_24,
-                            "UMKM" to R.drawable.baseline_storefront_24,
-                            "Gabung GRIB" to R.drawable.baseline_card_membership_24,
-                            "Donasi" to R.drawable.baseline_wallet_24
-                        )
-
-                        items.forEachIndexed { index, (label, icon) ->
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        when (index) {
-                                            0 -> navController.navigate("news")
-                                            2 -> navController.navigate("status")
-                                            // Tambahkan navigasi sesuai kebutuhan
-                                        }
-                                    }
-                            ) {
-                                Box(
+                            items.forEachIndexed { index, (label, icon) ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
-                                        .size(70.dp) // Ukuran tombol
-                                        .background(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            shape = RoundedCornerShape(12.dp)
-                                        )
-                                        .padding(2.dp), // Latar belakang bulat
-                                    contentAlignment = Alignment.Center // Memastikan ikon di tengah
+                                        .weight(1f)
+                                        .clickable {
+                                            when (index) {
+                                                0 -> navController.navigate("news")
+                                                1 -> navController.navigate("registerUmkm")
+                                                2 -> navController.navigate("registerGrib")
+                                                // Tambahkan navigasi sesuai kebutuhan
+                                            }
+                                        }
                                 ) {
-                                    Icon(
-                                        imageVector = ImageVector.vectorResource(id = icon),
-                                        contentDescription = label,
-                                        modifier = Modifier.size(40.dp),
-                                        tint = Color.White // Warna ikon agar kontras
+                                    Box(
+                                        modifier = Modifier
+                                            .size(70.dp) // Ukuran tombol
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .padding(2.dp), // Latar belakang bulat
+                                        contentAlignment = Alignment.Center // Memastikan ikon di tengah
+                                    ) {
+                                        Icon(
+                                            imageVector = ImageVector.vectorResource(id = icon),
+                                            contentDescription = label,
+                                            modifier = Modifier.size(40.dp),
+                                            tint = Color.White // Warna ikon agar kontras
+                                        )
+                                    }
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
-                                Text(
-                                    text = label,
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
                             }
                         }
                     }
                 }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth().padding(horizontal = 16.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
 
                 )
-            {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth().padding(16.dp),
+                {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
 
-                    ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(80.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(fontSize = 11.sp, lineHeight = 13.sp, text = "GRIB atau Gerakan Rakyat Indonesia Bersatu didirikan oleh Rosario de Marshal, atau populer sebagai Hercules. Hercules adalah mantan gangster dan broker politik asal Timor Timur")
-                        Text(
-                            text = "Liat selengkapnya",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black, // Sesuaikan warna teks
-                            modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
+                        ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(80.dp)
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                fontSize = 11.sp,
+                                lineHeight = 13.sp,
+                                text = "GRIB atau Gerakan Rakyat Indonesia Bersatu didirikan oleh Rosario de Marshal, atau populer sebagai Hercules. Hercules adalah mantan gangster dan broker politik asal Timor Timur"
+                            )
+                            Text(
+                                text = "Liat selengkapnya",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black, // Sesuaikan warna teks
+                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
+                            )
+                        }
                     }
                 }
-            }
-            SlideComponentBanner(
-                items = banners.shuffled().take(3),
-                onItemClick = { menu ->
-                    println("Menu yang diklik: $menu")
-                },
-                scrollInterval = 5000L
-            )
-            SlideComponentNews(
-                items = NewsData.newsList,
-                onItemClick = { menu ->
+                SlideComponentBanner(
+                    items = banners.shuffled().take(3),
+                    onItemClick = { menu ->
+                        println("Menu yang diklik: $menu")
+                    },
+                    scrollInterval = 5000L
+                )
+                SlideComponentNews(
+                    items = NewsData.newsList,
+                    onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
-                },
-                navController = navController
-            )
-            SlideComponentCharity(
-                items = charitys,
-                onItemClick = { menu ->
-                    println("Menu yang diklik: $menu")
-                }
-            )
-            SlideComponentProduct(
-                items = products,
-                onItemClick = { menu ->
-                    println("Menu yang diklik: $menu")
-                }
-            )
-        }
+                    },
+                    navController = navController
+                )
+                SlideComponentCharity(
+                    items = charitys,
+                    onItemClick = { menu ->
+                        println("Menu yang diklik: $menu")
+                    }
+                )
+                SlideComponentProduct(
+                    items = products,
+                    onItemClick = { menu ->
+                        println("Menu yang diklik: $menu")
+                    }
+                )
+            }
 
+        }
     }
-}
 }

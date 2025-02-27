@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowInsetsCompat
-import androidx.emoji2.emojipicker.EmojiPickerView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test.R
 import com.example.test.ui.screens.User
