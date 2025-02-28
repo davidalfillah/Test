@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +47,7 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseException
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
@@ -99,6 +101,23 @@ class AuthRepository {
             "0.0.0.0"
         }
     }
+
+    fun checkMemberStatus(userId: String, onResult: (Boolean) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+
+        db.collection("members")
+            .whereEqualTo("userId", userId) // ✅ Cari berdasarkan field userId di dalam dokumen members
+            .limit(1) // 🔹 Ambil hanya satu hasil, karena userId harus unik
+            .get()
+            .addOnSuccessListener { documents ->
+                onResult(!documents.isEmpty) // ✅ True jika ada hasil, False jika tidak
+            }
+            .addOnFailureListener {
+                onResult(false) // 🔴 Jika query gagal, anggap belum menjadi anggota
+            }
+    }
+
+
 
     // Menyimpan sesi ke Firestore
     private suspend fun saveSession(user: FirebaseUser) {
@@ -358,6 +377,10 @@ class AuthViewModel @Inject constructor(
         authRepository.updateUserStatus(isOnline, userId)
     }
 
+    fun checkMemberStatus(userId: String, onResult: (Boolean) -> Unit) {
+        authRepository.checkMemberStatus(userId, onResult)
+    }
+
 
     fun sendOtp(phoneNumber: String, activity: Activity, onSuccess: (Boolean) -> Unit, onError: (String) -> Unit) {
         authRepository.sendOtp(phoneNumber, activity, onSuccess, onError)
@@ -489,9 +512,15 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        // 🔥 Pastikan hanya dijalankan sekali sebelum Firebase digunakan
+        try {
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        } catch (e: DatabaseException) {
+            Log.e("Firebase", "Persistence sudah diaktifkan sebelumnya")
+        }
         super.onCreate(savedInstanceState)
 
         val fontRequest = FontRequest(

@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
@@ -364,7 +365,15 @@ fun HomeScreen(
                                             when (index) {
                                                 0 -> navController.navigate("news")
                                                 1 -> navController.navigate("registerUmkm")
-                                                2 -> navController.navigate("registerGrib")
+                                                2 -> user?.let {
+                                                    authViewModel.checkMemberStatus(it.uid) { isMember ->
+                                                        if (isMember) {
+                                                            navController.navigate("homeKta/${it.uid}")
+                                                        } else {
+                                                            navController.navigate("uploadKtp")
+                                                        }
+                                                    }
+                                                }
                                                 // Tambahkan navigasi sesuai kebutuhan
                                             }
                                         }

@@ -43,12 +43,15 @@ fun CustomInputField(
     placeholder: String = "",
     options: List<String> = emptyList(),
     selectedOption: String = "",
+    showLable: Boolean? = true,
     onValueChange: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 4.dp))
+        if(showLable == true){
+            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 4.dp))
+        }
 
         when (type) {
             InputType.TEXT -> {
@@ -71,7 +74,6 @@ fun CustomInputField(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onValueChange((selectedOption.toBoolean().not()).toString()) }
-                        .padding(8.dp)
                 ) {
                     Checkbox(
                         checked = selectedOption.toBoolean(),

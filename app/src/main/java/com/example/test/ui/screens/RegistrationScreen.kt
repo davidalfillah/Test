@@ -3,6 +3,8 @@ package com.example.test.ui.screens
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +24,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,8 +46,11 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,19 +83,18 @@ fun RegistrationScreen(
     paddingValues: PaddingValues,
     navController: NavHostController,
     memberViewModel: MemberViewModel = viewModel(),
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    nik: String, fullName: String, street: String, imageUrl: String? = null, birthDate: String
 ) {
     val user by authViewModel.user.collectAsState()
     val context = LocalContext.current
+    Log.d("BirthDate", birthDate)
 
-    var fullName by remember { mutableStateOf("") }
-    var nik by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var religion by remember { mutableStateOf("") }
     var education by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var street by remember { mutableStateOf("") }
+    var job by remember { mutableStateOf("") }
     var postalCode by remember { mutableStateOf("") }
     var jobTitle by remember { mutableStateOf("Anggota") }
     var isRegistering by remember { mutableStateOf(false) }
@@ -96,21 +103,18 @@ fun RegistrationScreen(
     var selectedCity by remember { mutableStateOf("") }
     var selectedSubDistrict by remember { mutableStateOf("") }
     var selectedVillage by remember { mutableStateOf("") }
+    var agree by remember { mutableStateOf("") }
 
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    val getImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            imageUri = it  // Simpan URI gambar
+    var inputImageUri by remember { mutableStateOf(imageUrl) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
 
-            // Proses gambar dengan ML Kit
-            processImage(context, it) { extractedNik, extractedName, extractedAddress ->
-                nik = extractedNik
-                fullName = extractedName
-            }
-        }
+    val getPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { photoUri = it }
     }
+
+    val isButtonEnabled = agree.isNotEmpty() && !isRegistering
+
 
     Scaffold(
         topBar = {
@@ -142,42 +146,42 @@ fun RegistrationScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(150.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape)
-                        .clickable { getImage.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(imageUri),
-                            contentDescription = "KTP Image",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text(text = "Upload KTP", fontSize = 14.sp)
-                    }
+                Text("Foto KTP", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (inputImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(inputImageUri),
+                        contentDescription = "Foto KTP",
+                        modifier = Modifier.fillMaxWidth().height(200.dp)
+                    )
+                } else {
+                    Text("Belum ada foto KTP", modifier = Modifier.padding(16.dp))
                 }
 
-                CustomInputField(
-                    type = InputType.TEXT,
-                    label = "Nama Lengkap",
-                    onValueChange = { fullName = it },
-                    placeholder = "Masukkan nama lengkap Anda"
-                )
 
                 CustomInputField(
                     type = InputType.TEXT,
                     label = "NIK",
-                    onValueChange = { nik = it },
-                    placeholder = "Masukkan NIK Anda"
+                    placeholder = "Masukkan NIK",
+                    selectedOption = nik,
+                    onValueChange = {  }
                 )
 
                 CustomInputField(
                     type = InputType.TEXT,
+                    label = "Nama Lengkap",
+                    placeholder = "Masukkan Nama",
+                    selectedOption = fullName,
+                    onValueChange = {  }
+                )
+
+
+                CustomInputField(
+                    type = InputType.TEXT,
                     label = "Tanggal Lahir",
-                    onValueChange = { birthDate = it },
+                    onValueChange = {  },
+                    selectedOption = birthDate,
                     placeholder = "Masukkan tanggal lahir Anda"
                 )
 
@@ -186,6 +190,45 @@ fun RegistrationScreen(
                     options = listOf("Laki-laki", "Perempuan"),
                     selectedValue = gender,
                     onSelected =  { gender = it }
+                )
+
+                CustomInputField(
+                    type = InputType.TEXT,
+                    label = "Agama",
+                    placeholder = "Masukkan Agama",
+                    selectedOption = religion,
+                    onValueChange = { religion = it }
+                )
+
+                CustomDropdown(
+                    label = "Pendidikan Terakhir",
+                    options = listOf("SD", "SMP", "SMA", "S1", "S2", "S3"),
+                    selectedValue = education,
+                    onSelected =  { education = it }
+                )
+
+                CustomInputField(
+                    type = InputType.TEXT,
+                    label = "Nomor Telepon",
+                    placeholder = "Masukkan Nomor Telepon",
+                    selectedOption = phone,
+                    onValueChange = { phone = it }
+                )
+
+                CustomInputField(
+                    type = InputType.TEXT,
+                    label = "Pekerjaan",
+                    placeholder = "Masukkan Pekerjaan",
+                    selectedOption = job,
+                    onValueChange = { job = it }
+                )
+
+                CustomInputField(
+                    type = InputType.TEXT,
+                    label = "Alamat",
+                    placeholder = "Masukkan Alamat",
+                    selectedOption = street,
+                    onValueChange = {  }
                 )
 
                 AddressInputField(
@@ -199,7 +242,60 @@ fun RegistrationScreen(
                     onVillageSelected = { selectedVillage = it }
                 )
 
+                CustomInputField(
+                    type = InputType.TEXT,
+                    label = "Kode Pos",
+                    placeholder = "Masukkan Kode Pos",
+                    selectedOption = postalCode,
+                    onValueChange = { postalCode = it }
+                )
+
+
+                Box(
+                    modifier = Modifier
+                        .size(150.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape)
+                        .clickable { getPhoto.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (photoUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(photoUri),
+                            contentDescription = "Foto Anggota",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text(text = "Upload Foto Anggota", fontSize = 14.sp)
+                    }
+                }
+
+
                 Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Saya yang bertanda tangan dibawah ini menyatakan bahwa semua data yang saya sampaikan ini adalah benar, dalam keadaan sehat jasmani rohani dan tanpa paksaan dari pihak manapun.\n\n" +
+                            "Saya bersedia mematuhi Anggaran Dasar dan Anggaran Rumah Tangga (AD/ART) Ormas GRIB JAYA, Peraturan organisasi serta keputusan-keputusan lainnya yang ditetapkan.\n\n" +
+                            "Bersedia berpartisipasi aktif dalam susunan kepengurusan organisasi Gerakan Rakyat Indonesia Bersatu di tingkat manapun.\n\n" +
+                            "Bersedia menjalankan tugas dan fungsi sesuai Visi Misi organisasi serta menjunjung tinggi nama baik organisasi dimanapun berada.\n\n" +
+                            "Saya siap dikenakan sanksi apabila di kemudian hari saya terbukti melakukan hal-hal yang merugikan dan merusak nama baik organisasi GRIB JAYA.",
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    color = Color.Black
+                )
+
+                CustomInputField(
+                    type = InputType.CHECKBOX,
+                    label = "Setuju",
+                    showLable = false,
+                    selectedOption = agree,
+                    onValueChange = { if(agree.isEmpty()) agree = it else agree = "" },
+                    )
+
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+
 
                 Button(
                     onClick = {
@@ -215,6 +311,7 @@ fun RegistrationScreen(
                                 education = education,
                                 phone = phone,
                                 street = street,
+                                job = job,
                                 village = selectedVillage,
                                 subDistrict = selectedSubDistrict,
                                 city = selectedCity,
@@ -228,7 +325,7 @@ fun RegistrationScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isRegistering
+                    enabled = isButtonEnabled
                 ) {
                     Text(if (isRegistering) "Mendaftar..." else "Daftar")
                 }
@@ -239,47 +336,19 @@ fun RegistrationScreen(
 
 
 
-// Proses Gambar dengan ML Kit
-private fun processImage(
-    context: Context,
-    imageUri: Uri,
-    onExtracted: (String, String, String) -> Unit
-     ) {
-    try {
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val image = InputImage.fromFilePath(context, imageUri)
 
-        recognizer.process(image)
-            .addOnSuccessListener { visionText ->
-                val extractedNik = extractNik(visionText.text)
-                val extractedName = extractName(visionText.text)
-                val extractedAddress = extractAddress(visionText.text)
 
-                Log.d("MLKit", "NIK: $extractedNik, Nama: $extractedName, Alamat: $extractedAddress")
 
-                onExtracted(extractedNik, extractedName, extractedAddress)
-            }
-            .addOnFailureListener { e ->
-                Log.e("MLKit", "Gagal mengenali teks", e)
-            }
-    } catch (e: IOException) {
-        e.printStackTrace()
-    }
-}
 
-// Ekstraksi Data dari Hasil OCR
-private fun extractNik(text: String): String {
-    val nikRegex = Regex("\\b\\d{16}\\b") // Mendeteksi 16 digit angka
-    return nikRegex.find(text)?.value ?: "NIK tidak ditemukan"
-}
 
-private fun extractName(text: String): String {
-    val nameRegex = Regex("Nama\\s*:\\s*(.*)")
-    return nameRegex.find(text)?.groups?.get(1)?.value ?: "Nama tidak ditemukan"
-}
 
-private fun extractAddress(text: String): String {
-    val addressRegex = Regex("Alamat\\s*:\\s*(.*)")
-    return addressRegex.find(text)?.groups?.get(1)?.value ?: "Alamat tidak ditemukan"
-}
+
+
+
+
+
+
+
+
+
 

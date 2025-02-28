@@ -46,6 +46,7 @@ data class Address(
 )
 
 data class Member(
+    val id: String? = "",
     val userId: String = "",  // User ID dari Firebase Authentication
     val memberId: String = "",
     val fullName: String = "",
@@ -55,6 +56,7 @@ data class Member(
     val religion: String = "",
     val education: String = "",
     val phone: String = "",
+    val job: String = "",
     val address: Address = Address(),
     val branchId: String = "",
     val branchLevel: BranchLevel = BranchLevel.PAC,
@@ -86,6 +88,7 @@ enum class BranchLevel {
 }
 
 data class Branch(
+    val id: String? = "",
     val branchId: String = "",
     val name: String = "",
     val location: BranchLocation = BranchLocation(),

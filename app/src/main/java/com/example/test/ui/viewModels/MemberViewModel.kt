@@ -13,14 +13,52 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.launch
 
-class MemberViewModel : ViewModel() {
+open class MemberViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+
+    open fun fetchMember(userId: String, onResult: (Member?, Branch?) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+
+        db.collection("members")
+            .whereEqualTo("userId", userId) // ✅ Cari berdasarkan field userId di dalam koleksi "members"
+            .limit(1) // 🔹 Hanya ambil satu data (userId unik)
+            .get()
+            .addOnSuccessListener { documents ->
+                val memberDoc = documents.documents.firstOrNull() // ✅ Ambil dokumen pertama jika ada
+
+                if (memberDoc != null) {
+                    val member = memberDoc.toObject(Member::class.java)
+
+                    // 🔹 Jika member punya branchId, ambil data cabangnya
+                    if (!member?.branchId.isNullOrEmpty()) {
+                        db.collection("branches").document(member!!.branchId)
+                            .get()
+                            .addOnSuccessListener { branchDoc ->
+                                val branch = branchDoc.toObject(Branch::class.java)
+                                onResult(member, branch) // ✅ Callback dengan member & branch
+                            }
+                            .addOnFailureListener {
+                                onResult(member, null) // ❌ Jika gagal mengambil branch, tetap kirim member
+                            }
+                    } else {
+                        onResult(member, null) // 🔹 Jika member tidak punya branch
+                    }
+                } else {
+                    onResult(null, null) // ❌ Jika member tidak ditemukan
+                }
+            }
+            .addOnFailureListener {
+                onResult(null, null) // ❌ Jika query gagal, kembalikan null
+            }
+    }
+
+
 
     fun registerMember(
         userId: String, // Tambahkan userId sebagai parameter
         fullName: String, nik: String, birthDate: String, gender: String, religion: String,
         education: String, phone: String, street: String, village: String, subDistrict: String,
-        city: String, province: String, postalCode: String, jobTitle: String,
+        city: String, province: String, postalCode: String, jobTitle: String, job: String,
         onResult: (Boolean, String) -> Unit
     ) {
         val db = FirebaseFirestore.getInstance()
@@ -51,6 +89,7 @@ class MemberViewModel : ViewModel() {
                             address = Address(street, village, subDistrict, city, province, postalCode),
                             branchId = branchId,
                             branchLevel = branchLevel,
+                            job = job,
                             jobTitle = jobTitle
                         )
 

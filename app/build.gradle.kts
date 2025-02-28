@@ -66,6 +66,7 @@ dependencies {
 
     // To recognize Korean script
     implementation ("com.google.mlkit:text-recognition-korean:16.0.1")
+    implementation(libs.firebase.storage.ktx)
 
     val emoji2_version = "1.5.0"
     implementation("androidx.emoji2:emoji2:$emoji2_version")

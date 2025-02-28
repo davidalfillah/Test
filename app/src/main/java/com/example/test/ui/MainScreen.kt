@@ -36,8 +36,11 @@ import com.example.test.setStatusBarColor
 import com.example.test.ui.screens.AccountScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
+import com.example.test.ui.screens.DigitalKTAScreen
+import com.example.test.ui.screens.HomeKtaScreen
 import com.example.test.ui.screens.HomeScreen
 import com.example.test.ui.screens.LoginScreen
+import com.example.test.ui.screens.MemberProfileScreen
 import com.example.test.ui.screens.NewsDetailScreen
 import com.example.test.ui.screens.NewsScreen
 import com.example.test.ui.screens.OtpScreen
@@ -47,6 +50,7 @@ import com.example.test.ui.screens.RegistrationUmkmScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
+import com.example.test.ui.screens.UploadKtpScreen
 import com.example.test.ui.viewModels.ChatViewModel
 
 @RequiresApi(Build.VERSION_CODES.R)
@@ -72,6 +76,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             "chat" -> false
             "news_detail/{newsId}" -> false
             "news" -> false
+            "homeKta/{userId}"-> true
             "account" -> false
             "profile_setup" -> true
             else -> false
@@ -89,7 +94,12 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     "registerGrib",
                     "registerUmkm",
                     "profile_setup",
+                    "homeKta/{userId}",
+                    "biodataMember/{userId}",
+                    "uploadKtp",
+                    "registerGrib?nik={nik}&name={name}&address={address}&imageUrl={imageUrl}&birthDate={birthDate}",
                     "chat_detail/{chatId}",
+                    "kta/{userId}",
                     "news_detail/{newsId}",
                     "otp_screen/{phoneNumber}"))
             {
@@ -109,7 +119,55 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("home") { HomeScreen(navController,
                 PaddingValues, authViewModel) }
             composable("status") { StatusScreen(navController) }
-            composable("registerGrib") { RegistrationScreen(paddingValues = PaddingValues, navController, authViewModel = authViewModel) }
+            composable("biodataMember/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                MemberProfileScreen(
+                    navController = navController, userId, {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("homeKta/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                HomeKtaScreen(
+                    navController = navController,
+                    paddingValues = PaddingValues,
+                    userId = userId
+                )
+            }
+            composable("uploadKtp") {
+                UploadKtpScreen(
+                    navController,
+                )
+            }
+
+            composable(
+                "registerGrib?nik={nik}&name={name}&address={address}&imageUrl={imageUrl}&birthDate={birthDate}",
+                arguments = listOf(
+                    navArgument("nik") { defaultValue = "" },
+                    navArgument("name") { defaultValue = "" },
+                    navArgument("address") { defaultValue = "" },
+                    navArgument("imageUrl") { nullable = true },
+                            navArgument("birthDate") { defaultValue = "" }
+                )
+            ) { backStackEntry ->
+                val nik = backStackEntry.arguments?.getString("nik") ?: ""
+                val name = backStackEntry.arguments?.getString("name") ?: ""
+                val address = backStackEntry.arguments?.getString("address") ?: ""
+                val imageUrl = backStackEntry.arguments?.getString("imageUrl")
+                val birthDate = backStackEntry.arguments?.getString("birthDate") ?: ""
+
+                RegistrationScreen(
+                    paddingValues = PaddingValues,
+                    navController = navController,
+                    authViewModel = authViewModel,
+                    nik = nik,
+                    fullName = name,
+                    street = address,
+                    imageUrl = imageUrl,
+                    birthDate = birthDate
+                )
+            }
             composable("registerUmkm") { RegistrationUmkmScreen(paddingValues = PaddingValues, navController, authViewModel = authViewModel) }
             composable("profile_setup") { ProfileSetupScreen(navController, authViewModel, paddingValues = PaddingValues) }
             composable(
@@ -125,6 +183,12 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("chat_detail/{chatId}") { backStackEntry ->
                 val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
                 ChatDetailScreen(navController, ChatViewModel(), authViewModel, chatId)
+            }
+            composable("kta/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                DigitalKTAScreen(userId, {
+                    navController.popBackStack()
+                })
             }
             composable(
                 "otp_screen/{phoneNumber}",

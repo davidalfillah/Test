@@ -195,52 +195,6 @@ fun AccountScreen(navController: NavHostController, authViewModel: AuthViewModel
                 }
             }
 
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth().padding(16.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-
-            )
-            {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth().padding(16.dp),
-                    horizontalArrangement =  Arrangement.SpaceBetween
-
-                    ) {
-                    Column {
-                        Text(fontSize = 12.sp,
-                            lineHeight = 13.sp,
-                            text = "Kamu adalah anggota GRIB")
-                        Text(fontSize = 18.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.Black,
-                            lineHeight = 19.sp,
-                            text = "GRIB PAC Jateng")
-                        Text(
-                            text = "ID: 88851001253",
-                            fontSize = 12.sp,
-                        )
-                    }
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "Lihat", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
-                            Icon(
-                                imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
-                                contentDescription = "Lihat",
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
-                            )
-                        }
-                    }
-                }
-            }
-            Divider(
-                color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp,
-            )
-
             // 🔹 ListView (selalu muncul)
             SettingsList()
 
@@ -290,11 +244,7 @@ fun SettingsList() {
     Column {
         ListItem(text = "Iuran Anggota", subText = "", icon = Icons.Default.DateRange)
         ListItem(text = "Riwayat Transaksi", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_history_24))
-        ListItem(text = "Kartu Digital", subText = "Cetak Kartu", icon = ImageVector.vectorResource(R.drawable.baseline_card_membership_24))
-        ListItem(text = "UMKM", subText = "Gabung UMKM", icon = ImageVector.vectorResource(R.drawable.baseline_storefront_24))
-        ListItem(text = "Ajak Teman", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_supervised_user_circle_24))
         ListItem(text = "Pengaturan", subText = "", icon = Icons.Default.Settings)
-        ListItem(text = "Tentang Hello GRIB", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_info_outline_24))
         ListItem(text = "Pusat Bantuan", subText = "", icon = Icons.Default.Call)
         ListItem(text = "Syarat & Ketentuan", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_description_24))
         ListItem(text = "Kebijakan Privasi", subText = "", icon = ImageVector.vectorResource(R.drawable.baseline_privacy_tip_24))
