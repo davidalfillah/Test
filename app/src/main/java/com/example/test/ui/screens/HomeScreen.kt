@@ -352,7 +352,7 @@ fun HomeScreen(
                             val items = listOf(
                                 "News" to R.drawable.baseline_newspaper_24,
                                 "UMKM" to R.drawable.baseline_storefront_24,
-                                "Gabung GRIB" to R.drawable.baseline_card_membership_24,
+                                "KTA" to R.drawable.baseline_card_membership_24,
                                 "Donasi" to R.drawable.baseline_wallet_24
                             )
 
