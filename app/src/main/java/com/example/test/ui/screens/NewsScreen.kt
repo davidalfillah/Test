@@ -56,7 +56,6 @@ import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
-import com.example.test.ui.dataTest.charitys
 import com.example.test.ui.dataTest.products
 
 @OptIn(ExperimentalMaterial3Api::class)

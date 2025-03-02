@@ -1,18 +1,35 @@
 package com.example.test.ui.screens
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,74 +46,173 @@ import androidx.navigation.NavController
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.Member
 import com.example.test.ui.viewModels.MemberViewModel
+import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberProfileScreen(navController: NavController, userId: String, onBack: () -> Unit, memberViewModel: MemberViewModel = MemberViewModel()) {
+fun MemberProfileScreen(navController: NavController, memberData: String, paddingValues: PaddingValues) {
     val context = LocalContext.current
-    var member by remember { mutableStateOf<Member?>(null) }
-    var branch by remember { mutableStateOf<Branch?>(null) }
-
-    // Ambil data member
-    LaunchedEffect(userId) {
-        memberViewModel.fetchMember(userId) { fetchedMember, fetchedBranch ->
-            member = fetchedMember
-            branch = fetchedBranch
-        }
+    val member = try {
+        Gson().fromJson(Uri.decode(memberData), Member::class.java)
+    } catch (e: Exception) {
+        null
     }
+    var branch by remember { mutableStateOf<Branch?>(null) }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Biodata Member") })
+            TopAppBar(
+                title = { Text("Biodata member") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                        )
+                    }
+                },
+            )
         }
-    ) { padding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding(),
+                    start = 16.dp,
+                    end = 16.dp
+                )
+                .verticalScroll(rememberScrollState())
         ) {
-            member?.let {
-                Text("ID Anggota: ${it.memberId}", fontWeight = FontWeight.Bold)
-                Text("Nama: ${it.fullName}")
-                Text("NIK: ${it.nik}")
-                Text("Tanggal Lahir: ${it.birthDate}")
-                Text("Jenis Kelamin: ${it.gender}")
-                Text("Agama: ${it.religion}")
-                Text("Pendidikan: ${it.education}")
-                Text("Pekerjaan: ${it.job}")
-                Text("Alamat: ${it.address.street}, ${it.address.village}, ${it.address.subDistrict}, ${it.address.city}, ${it.address.province}")
-                Text("Kode Pos: ${it.address.postalCode}")
-                Text("Jabatan: ${it.jobTitle}")
-                branch?.let { b -> Text("Cabang: ${b.name}") }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-//                // Tombol untuk melihat KTP
-//                Button(
-//                    onClick = {
-//                        it.ktpUrl?.let { url ->
-//                            navController.navigate("viewKtp?url=$url")
-//                        } ?: Toast.makeText(context, "KTP tidak tersedia", Toast.LENGTH_SHORT).show()
-//                    }
-//                ) {
-//                    Text("Lihat KTP")
-//                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Tombol untuk melihat KTA Digital
-                Button(
-                    onClick = {
-                        navController.navigate("kta/${it.userId}")
-                    }
+            if (member != null) {
+                // Header dengan nama
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
-                    Text("Lihat KTA Digital")
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = member.fullName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "ID Anggota: ${member.memberId}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
                 }
-            } ?: run {
-                Text("Memuat data...", textAlign = TextAlign.Center)
+
+                // Informasi Pribadi
+                ProfileSection(title = "Informasi Pribadi") {
+                    ProfileItem("Jabatan", member.jobTitle)
+                    ProfileItem("NIK", member.nik)
+                    ProfileItem("Tanggal Lahir", member.birthDate)
+                    ProfileItem("Jenis Kelamin", member.gender)
+                    ProfileItem("Agama", member.religion)
+                    ProfileItem("Pendidikan", member.education)
+                    ProfileItem("Pekerjaan", member.job)
+                }
+
+                // Informasi Alamat
+                ProfileSection(title = "Alamat") {
+                    ProfileItem(
+                        "Alamat Lengkap",
+                        "${member.address.street}, ${member.address.village}, " +
+                                "${member.address.subDistrict}, ${member.address.city}, " +
+                                "${member.address.province}"
+                    )
+                    ProfileItem("Kode Pos", member.address.postalCode)
+                }
+
+                // Informasi Cabang
+                branch?.let { b ->
+                    ProfileSection(title = "Cabang") {
+                        ProfileItem("Nama Cabang", b.name)
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        "Memuat data...",
+                        modifier = Modifier.padding(top = 16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
+    }
+}
+
+
+// Komponen pembantu
+@Composable
+fun ProfileSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Divider()
+            content()
+        }
+    }
+}
+
+@Composable
+fun ProfileItem(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(2f),
+            textAlign = TextAlign.End
+        )
     }
 }

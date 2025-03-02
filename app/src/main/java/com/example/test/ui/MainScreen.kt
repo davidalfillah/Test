@@ -14,12 +14,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,7 +34,10 @@ import com.example.test.setStatusBarColor
 import com.example.test.ui.screens.AccountScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
-import com.example.test.ui.screens.DigitalKTAScreen
+import com.example.test.ui.screens.DigitalCardScreen
+import com.example.test.ui.screens.DonationDetailScreen
+import com.example.test.ui.screens.DonationInputScreen
+import com.example.test.ui.screens.DonationScreen
 import com.example.test.ui.screens.HomeKtaScreen
 import com.example.test.ui.screens.HomeScreen
 import com.example.test.ui.screens.LoginScreen
@@ -44,6 +45,7 @@ import com.example.test.ui.screens.MemberProfileScreen
 import com.example.test.ui.screens.NewsDetailScreen
 import com.example.test.ui.screens.NewsScreen
 import com.example.test.ui.screens.OtpScreen
+import com.example.test.ui.screens.PaymentScreen
 import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.RegistrationScreen
 import com.example.test.ui.screens.RegistrationUmkmScreen
@@ -52,6 +54,9 @@ import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 import com.example.test.ui.screens.UploadKtpScreen
 import com.example.test.ui.viewModels.ChatViewModel
+
+//Email : hellogrib430@gmail.com
+//Pass : Hell0@#$
 
 @RequiresApi(Build.VERSION_CODES.R)
 @Composable
@@ -74,6 +79,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             "shopping" -> true
             "login" -> true
             "chat" -> false
+            "digitalCard/{member}" -> true
+            "biodataMember/{memberJson}" -> true
             "news_detail/{newsId}" -> false
             "news" -> false
             "homeKta/{userId}"-> true
@@ -88,18 +95,22 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             if (currentRoute !in listOf(
                     "login",
                     "register",
+                    "donations",
                     "news",
                     "status",
                     "success?nextScreen={nextScreen}",
                     "registerGrib",
                     "registerUmkm",
                     "profile_setup",
+                    "donation_input/{title}",
+                    "digitalCard/{member}",
                     "homeKta/{userId}",
-                    "biodataMember/{userId}",
+                    "biodataMember/{memberJson}",
                     "uploadKtp",
                     "registerGrib?nik={nik}&name={name}&address={address}&imageUrl={imageUrl}&birthDate={birthDate}",
                     "chat_detail/{chatId}",
                     "kta/{userId}",
+                    "donation_detail/{donationId}",
                     "news_detail/{newsId}",
                     "otp_screen/{phoneNumber}"))
             {
@@ -112,6 +123,46 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             startDestination = "home",
 
         ) {
+            composable(
+                route = "payment/{userId}/{userEmail}",
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.StringType },
+                    navArgument("userEmail") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                val userEmail = backStackEntry.arguments?.getString("userEmail") ?: ""
+                PaymentScreen(
+                    userId = userId,
+                    userEmail = userEmail,
+                    navController = navController
+                )
+            }
+            composable("donation_input/{title}") { backStackEntry ->
+                val title = backStackEntry.arguments?.getString("title") ?: "general"
+                DonationInputScreen(
+                    title = title,
+                    navController = navController
+                )
+            }
+            composable("donation_detail/{donationId}") { backStackEntry ->
+                val donationId = backStackEntry.arguments?.getString("donationId") ?: return@composable
+                DonationDetailScreen(navController, donationId, authViewModel = authViewModel)
+            }
+
+            // Rute baru untuk DonationPage
+            composable("donations") {
+                DonationScreen(
+                    paddingValues = PaddingValues,
+                    onGeneralDonationClick = { amount ->
+                        println("Donasi umum: Rp $amount")
+                    },
+                    onCharityDonationClick = { charity, amount ->
+                        println("Donasi untuk ${charity.title}: Rp $amount")
+                    },
+                    navController = navController // Tambahkan untuk navigasi kembali
+                )
+            }
             composable("news_detail/{newsId}") { backStackEntry ->
                 val newsId = backStackEntry.arguments?.getString("newsId") ?: "1"
                 NewsDetailScreen(newsId, navController)
@@ -119,12 +170,10 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("home") { HomeScreen(navController,
                 PaddingValues, authViewModel) }
             composable("status") { StatusScreen(navController) }
-            composable("biodataMember/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            composable("biodataMember/{memberJson}") { backStackEntry ->
+                val memberJson = backStackEntry.arguments?.getString("memberJson") ?: ""
                 MemberProfileScreen(
-                    navController = navController, userId, {
-                        navController.popBackStack()
-                    }
+                    navController = navController, memberJson, paddingValues = PaddingValues
                 )
             }
             composable("homeKta/{userId}") { backStackEntry ->
@@ -184,11 +233,13 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
                 ChatDetailScreen(navController, ChatViewModel(), authViewModel, chatId)
             }
-            composable("kta/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                DigitalKTAScreen(userId, {
-                    navController.popBackStack()
-                })
+            composable("digitalCard/{member}") { backStackEntry ->
+                val memberData = backStackEntry.arguments?.getString("member") ?: ""
+                DigitalCardScreen(
+                    navController = navController,
+                    memberData = memberData,
+                    onBackClick = { navController.popBackStack() }
+                )
             }
             composable(
                 "otp_screen/{phoneNumber}",

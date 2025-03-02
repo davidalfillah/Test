@@ -1,7 +1,6 @@
 package com.example.test.ui.dataTest
 
 import com.example.test.R
-import com.example.test.ui.screens.Donation
 
 data class ChatItem(
     val profilePic: String, // URL atau drawable

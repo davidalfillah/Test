@@ -1,5 +1,6 @@
 package com.example.test.ui.screens
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,6 +69,7 @@ import com.example.test.ui.dataType.Address
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.Member
 import com.example.test.ui.viewModels.MemberViewModel
+import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,8 +190,16 @@ fun HomeKtaScreen(
                                 .padding(8.dp)
                                 .clickable {
                                     when (label) {
-                                        "Kartu Digital" -> navController.navigate("news")
-                                        "Biodata" -> navController.navigate("registerUmkm")
+                                        "KTA Digital" -> {
+                                            val memberJson = Uri.encode(Gson().toJson(member))
+                                            navController.navigate("digitalCard/$memberJson")
+                                        }
+
+                                        "Biodata" -> {
+                                            val memberJson = Uri.encode(Gson().toJson(member))
+                                            navController.navigate("biodataMember/$memberJson")
+                                        }
+
                                         "Sertifkat" -> navController.navigate("uploadKtp")
                                         "KTP" -> navController.navigate("donation")
                                     }

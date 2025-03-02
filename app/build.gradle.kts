@@ -28,6 +28,9 @@ android {
             )
         }
     }
+
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -52,6 +55,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
     implementation("androidx.compose.ui:ui-viewbinding:1.6.0") // Atau versi terbaru
 
+
     // To recognize Latin script
     implementation ("com.google.mlkit:text-recognition:16.0.1")
 
@@ -67,6 +71,8 @@ dependencies {
     // To recognize Korean script
     implementation ("com.google.mlkit:text-recognition-korean:16.0.1")
     implementation(libs.firebase.storage.ktx)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.firebase.functions.ktx)
 
     val emoji2_version = "1.5.0"
     implementation("androidx.emoji2:emoji2:$emoji2_version")

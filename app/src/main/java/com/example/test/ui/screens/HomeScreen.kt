@@ -70,18 +70,11 @@ import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.components.UserProfileImage
 import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
-import com.example.test.ui.dataTest.charitys
 import com.example.test.ui.dataTest.products
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
-data class Donation(
-    val image: Int,       // ID Gambar dari drawable
-    val title: String,    // Judul donasi
-    val target: Int,      // Target donasi (contoh: Rp10.000.000)
-    val collected: Int    // Donasi yang sudah terkumpul
-)
 
 data class Product(
     val image: String,       // ID Gambar dari drawable
@@ -374,6 +367,7 @@ fun HomeScreen(
                                                         }
                                                     }
                                                 }
+                                                3 -> navController.navigate("donations")
                                                 // Tambahkan navigasi sesuai kebutuhan
                                             }
                                         }
@@ -459,12 +453,12 @@ fun HomeScreen(
                     },
                     navController = navController
                 )
-                SlideComponentCharity(
-                    items = charitys,
-                    onItemClick = { menu ->
-                        println("Menu yang diklik: $menu")
-                    }
-                )
+//                SlideComponentCharity(
+//                    items = charitys,
+//                    onItemClick = { menu ->
+//                        println("Menu yang diklik: $menu")
+//                    }
+//                )
                 SlideComponentProduct(
                     items = products,
                     onItemClick = { menu ->

@@ -38,8 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.test.R
-import com.example.test.ui.screens.Donation
+import com.example.test.ui.viewModels.Donation
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 
@@ -49,7 +50,6 @@ import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 fun SlideComponentCharity(
     items: List<Donation>, // List berisi pasangan ikon & teks
     onItemClick: (String) -> Unit,
-    scrollInterval: Long = 3000L // Auto-scroll setiap 2 detik
 ) {
     val lazyListState = rememberLazyListState()
 
@@ -82,8 +82,8 @@ fun SlideComponentCharity(
                         .background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
                 ) {
                     Column {
-                        Image(
-                            painter = painterResource(id = item.image),
+                        AsyncImage(
+                            model = item.thumbnailUrl,
                             contentDescription = "Judul Berita",
                             contentScale = ContentScale.Crop, // Gambar diisi penuh & dipotong jika perlu
                             modifier = Modifier
@@ -110,7 +110,7 @@ fun SlideComponentCharity(
                                     .background(color = Color.Red)// Warna latar belakang
                             ) {
                                 LinearProgressIndicator(
-                                    progress = item.collected.toFloat() / item.target.toFloat(),
+                                    progress = item.totalCollected.toFloat() / item.targetAmount?.toFloat()!!,
                                     modifier = Modifier.fillMaxSize(),
                                     color = Color.Red,
                                 )
@@ -118,7 +118,8 @@ fun SlideComponentCharity(
 
                             // Info Donasi
                             Text(
-                                text = "${formatCurrency(item.collected)} dari ${formatCurrency(item.target)}",
+                                text = "${formatCurrency(item.totalCollected.toInt())} dari ${item.targetAmount?.toInt()
+                                    ?.let { formatCurrency(it) }}",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium
                             )
