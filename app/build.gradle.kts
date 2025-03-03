@@ -16,6 +16,12 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField(
+            "String",
+            "XENDIT_SECRET_KEY",
+            "\"${project.findProperty("XENDIT_SECRET_KEY") ?: System.getenv("XENDIT_SECRET_KEY") ?: "FALLBACK_SECRET_KEY"}\""
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -38,7 +44,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    // ✅ Tambahkan baris ini untuk mengaktifkan BuildConfig
     buildFeatures {
+        buildConfig = true
         compose = true
     }
     buildToolsVersion = "35.0.0"
@@ -55,6 +63,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
     implementation("androidx.compose.ui:ui-viewbinding:1.6.0") // Atau versi terbaru
 
+    implementation ("com.xendit:xendit-android:4.2.1")
 
     // To recognize Latin script
     implementation ("com.google.mlkit:text-recognition:16.0.1")

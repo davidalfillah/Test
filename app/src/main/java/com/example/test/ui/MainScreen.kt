@@ -1,12 +1,22 @@
 package com.example.test.ui
 
 
+import android.content.Context
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -14,10 +24,15 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -54,6 +69,7 @@ import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 import com.example.test.ui.screens.UploadKtpScreen
 import com.example.test.ui.viewModels.ChatViewModel
+import com.example.test.ui.viewModels.PaymentViewModel
 
 //Email : hellogrib430@gmail.com
 //Pass : Hell0@#$
@@ -124,19 +140,42 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
 
         ) {
             composable(
-                route = "payment/{userId}/{userEmail}",
+                route = "payment/{userId}",
                 arguments = listOf(
-                    navArgument("userId") { type = NavType.StringType },
-                    navArgument("userEmail") { type = NavType.StringType }
+                    navArgument("userId") {
+                        type = NavType.StringType
+                        defaultValue = "" // Nilai default jika userId tidak ada
+                    }
                 )
             ) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                val userEmail = backStackEntry.arguments?.getString("userEmail") ?: ""
+                val viewModel = viewModel<PaymentViewModel>() // Menggunakan ViewModel dengan factory bawaan
+
                 PaymentScreen(
+                    viewModel = viewModel,
                     userId = userId,
-                    userEmail = userEmail,
-                    navController = navController
+                    amount = 20000, // Hardcoded untuk contoh, bisa dijadikan parameter
+                    onPaymentSuccess = { transactionId, data ->
+                        // Navigasi ke layar sukses dengan membawa data transaksi
+                        navController.navigate("payment_success/$transactionId") {
+                            popUpTo("payment/{userId}") { inclusive = false }
+                        }
+                    },
+                    onPaymentError = { errorMessage ->
+                        navController.context.showToast(errorMessage)
+                    }
                 )
+            }
+
+            // Rute tambahan untuk layar sukses (opsional)
+            composable(
+                route = "payment_success/{transactionId}",
+                arguments = listOf(
+                    navArgument("transactionId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+                PaymentSuccessScreen(transactionId = transactionId, navController = navController)
             }
             composable("donation_input/{title}") { backStackEntry ->
                 val title = backStackEntry.arguments?.getString("title") ?: "general"
@@ -299,4 +338,39 @@ data class BottomNavItem(val route: String, val title: String, val icon: ImageVe
 @Composable
 fun PreviewMainScreen() {
     MainScreen()
+}
+
+
+// Extension function untuk menampilkan Toast
+fun Context.showToast(message: String) {
+    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+}
+
+// Contoh PaymentSuccessScreen
+@Composable
+fun PaymentSuccessScreen(transactionId: String, navController: NavHostController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Pembayaran Berhasil!",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "ID Transaksi: $transactionId",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = { navController.popBackStack("payment/{userId}", inclusive = false) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Kembali")
+        }
+    }
 }
