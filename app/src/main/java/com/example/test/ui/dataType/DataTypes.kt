@@ -55,6 +55,7 @@ data class Member(
     val gender: String = "",
     val religion: String = "",
     val education: String = "",
+    val joinDateDay: Timestamp = Timestamp.now(),
     val phone: String = "",
     val job: String = "",
     val address: Address = Address(),

@@ -326,74 +326,66 @@ fun CharityDonationListItem(charity: Donation, onClick: () -> Unit) {
         NumberFormat.getNumberInstance(Locale("id", "ID")).format(it)
     } ?: "-"
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top // Sesuaikan tinggi elemen
     ) {
-        Row(
+        // Gambar di sebelah kiri
+        AsyncImage(
+            model = charity.thumbnailUrl,
+            contentDescription = "Gambar Proyek",
+            contentScale = ContentScale.Crop,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(8.dp))
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+        // Konten teks dan progress di sebelah kanan
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 4.dp)
         ) {
-            // Gambar di sebelah kiri
-            AsyncImage(
-                model = charity.thumbnailUrl,
-                contentDescription = "Gambar Proyek",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(80.dp) // Ukuran lebih kecil untuk list view
-                    .clip(RoundedCornerShape(8.dp))
+            Text(
+                text = charity.title,
+                fontSize = 14.sp, // Sedikit lebih besar untuk list view
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 16.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.width(12.dp))
+            // Progress Bar
+            val progress = (charity.totalCollected.toFloat() / (charity.targetAmount?.toFloat() ?: 1f))
+                .coerceIn(0f, 1f)
 
-            // Konten teks dan progress di sebelah kanan
-            Column(
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 4.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.tertiaryContainer)
             ) {
-                Text(
-                    text = charity.title,
-                    fontSize = 14.sp, // Sedikit lebih besar untuk list view
-                    color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 16.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Progress Bar
-                val progress = (charity.totalCollected.toFloat() / (charity.targetAmount?.toFloat() ?: 1f))
-                    .coerceIn(0f, 1f)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.tertiaryContainer)
-                ) {
-                    LinearProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        trackColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Rp $formattedTotalCollected / $formattedTargetAmount",
-                    fontSize = 12.sp, // Sedikit lebih besar dari carousel
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    trackColor = MaterialTheme.colorScheme.tertiaryContainer
                 )
             }
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Rp $formattedTotalCollected / $formattedTargetAmount",
+                fontSize = 12.sp, // Sedikit lebih besar dari carousel
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

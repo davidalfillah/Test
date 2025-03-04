@@ -97,7 +97,7 @@ fun DonationDetailScreen(
         bottomBar = {
             if (donation != null) {
                 BottomDonateButton(donation!!) { selectedDonation ->
-                    navController.navigate("payment/${user?.uid}")
+                    navController.navigate("payment/${user?.uid}/${donationId}/DONATION")
                 }
             }
         }

@@ -40,10 +40,9 @@ data class Transaction(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+
 class PaymentViewModel : ViewModel() {
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
-    private val functions: FirebaseFunctions = FirebaseFunctions.getInstance()
-    private var transactionListener: ListenerRegistration? = null
     private val client = OkHttpClient()
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -51,15 +50,21 @@ class PaymentViewModel : ViewModel() {
         userId: String,
         amount: Int,
         paymentMethod: String,
-        mobileNumber: String? = null,
-        bankCode: String = "BCA",
+        relatedId: String,
+        relatedType: String,
+        bankCode: String = "MANDIRI",
         ewalletChannel: String = "ID_OVO",
         retailOutlet: String = "ALFAMART",
-        qrisType: String = "DYNAMIC", // Tambahan untuk QRIS STATIC
+        mobileNumber: String? = null,
         onSuccess: (String, Map<String, Any>) -> Unit,
         onError: (String) -> Unit
     ) {
-        val transactionId = "TEST${System.currentTimeMillis()}"
+        if (amount <= 0) {
+            onError("Amount must be greater than 0")
+            return
+        }
+
+        val transactionId = "${relatedType.uppercase()}_${System.currentTimeMillis()}"
         val requestBody = JSONObject()
         var apiUrl = ""
 
@@ -69,28 +74,37 @@ class PaymentViewModel : ViewModel() {
                     apiUrl = "https://api.xendit.co/callback_virtual_accounts"
                     requestBody.apply {
                         put("external_id", transactionId)
-                        put("bank_code", bankCode)
+                        put("bank_code", bankCode.uppercase())
                         put("name", "User $userId")
-                        put("expected_amount", amount)
+                        put("expected_amount", amount) // Wajib untuk VA
                         put("is_single_use", true)
+                        put("is_closed", true)
                         put("expiration_date", getExpiryTime())
+                        put("metadata", JSONObject().apply {
+                            put("related_id", relatedId)
+                            put("related_type", relatedType)
+                        })
                     }
                 }
+
                 "QRIS" -> {
                     apiUrl = "https://api.xendit.co/qr_codes"
                     requestBody.apply {
                         put("reference_id", transactionId)
-                        put("type", qrisType.uppercase())
+                        put("type", "DYNAMIC")
                         put("currency", "IDR")
-                        if (qrisType.uppercase() == "DYNAMIC") {
-                            put("amount", amount)
-                        }
+                        put("amount", amount)
                         put("expires_at", getExpiryTime())
+                        put("metadata", JSONObject().apply {
+                            put("related_id", relatedId)
+                            put("related_type", relatedType)
+                        })
                     }
                 }
+
                 "EWALLET" -> {
-                    if (mobileNumber.isNullOrEmpty() && ewalletChannel == "ID_OVO") {
-                        onError("Nomor HP diperlukan untuk OVO")
+                    if (ewalletChannel.uppercase() == "ID_OVO" && mobileNumber.isNullOrEmpty()) {
+                        onError("Mobile number is required for OVO")
                         return
                     }
                     apiUrl = "https://api.xendit.co/ewallets/charges"
@@ -99,21 +113,30 @@ class PaymentViewModel : ViewModel() {
                         put("currency", "IDR")
                         put("amount", amount)
                         put("checkout_method", "ONE_TIME_PAYMENT")
-                        put("channel_code", ewalletChannel)
+                        put("channel_code", ewalletChannel.uppercase())
                         put("channel_properties", JSONObject().apply {
-                            if (mobileNumber != null) put("mobile_number", mobileNumber)
-                            when (ewalletChannel) {
+                            put("success_redirect_url", "yourapp://success")
+                            if (mobileNumber != null && ewalletChannel.uppercase() == "ID_OVO") {
+                                put("mobile_number", mobileNumber)
+                            }
+                            when (ewalletChannel.uppercase()) {
                                 "ID_DANA", "ID_SHOPEEPAY" -> {
-                                    put("success_redirect_url", "yourapp://success")
                                     put("failure_redirect_url", "yourapp://failure")
-                                }
-                                "ID_OVO" -> {
-                                    put("success_redirect_url", "yourapp://success")
                                 }
                             }
                         })
+                        // Tambahkan callback_url untuk eWallet
+                        put(
+                            "callback_url",
+                            "https://xenditwebhook-4utu2r7iya-uc.a.run.app"
+                        )
+                        put("metadata", JSONObject().apply {
+                            put("related_id", relatedId)
+                            put("related_type", relatedType)
+                        })
                     }
                 }
+
                 "RETAIL" -> {
                     apiUrl = "https://api.xendit.co/fixed_payment_code"
                     requestBody.apply {
@@ -122,13 +145,23 @@ class PaymentViewModel : ViewModel() {
                         put("name", "User $userId")
                         put("expected_amount", amount)
                         put("expiration_date", getExpiryTime())
+                        put("metadata", JSONObject().apply {
+                            put("related_id", relatedId)
+                            put("related_type", relatedType)
+                        })
                     }
                 }
+
                 else -> {
                     onError("Metode pembayaran tidak valid")
                     return
                 }
             }
+
+            Log.d(
+                "XenditRequest",
+                "Method: $paymentMethod, URL: $apiUrl, Body: ${requestBody.toString()}"
+            )
 
             val request = Request.Builder()
                 .url(apiUrl)
@@ -140,16 +173,15 @@ class PaymentViewModel : ViewModel() {
 
             client.newCall(request).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    Log.e("TransactionError", "Network error: ${e.message}")
+                    Log.e("XenditError", "Network failure: ${e.message}")
                     onError("Koneksi gagal: ${e.message}")
                 }
 
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                     val responseBody = response.body?.string()
-
+                    Log.d("XenditResponse", "Response Code: ${response.code}, Body: $responseBody")
                     if (!response.isSuccessful || responseBody.isNullOrEmpty()) {
-                        Log.e("TransactionError", "Error: ${response.code} - ${response.message}")
-                        onError("Gagal: ${response.code} - ${response.message}")
+                        onError("Gagal: ${response.code} - ${response.message} - $responseBody")
                         return
                     }
 
@@ -161,62 +193,54 @@ class PaymentViewModel : ViewModel() {
                             "amount" to amount,
                             "status" to "PENDING",
                             "paymentMethod" to paymentMethod,
+                            "relatedId" to relatedId,
+                            "relatedType" to relatedType,
                             "created_at" to System.currentTimeMillis()
                         )
 
                         when (paymentMethod.uppercase()) {
                             "VA" -> {
-                                transactionData["va_number"] = jsonResponse.optString("account_number")
+                                transactionData["va_number"] =
+                                    jsonResponse.optString("account_number")
                                 transactionData["bank_code"] = bankCode
                             }
+
                             "QRIS" -> {
                                 transactionData["qris_url"] = jsonResponse.optString("qr_string")
-                                transactionData["qris_type"] = qrisType
                             }
+
                             "EWALLET" -> {
                                 transactionData["ewallet_ref"] = jsonResponse.optString("id")
                                 transactionData["channel_code"] = ewalletChannel
-                                if (mobileNumber != null) transactionData["mobile_number"] = mobileNumber
                             }
+
                             "RETAIL" -> {
-                                transactionData["payment_code"] = jsonResponse.optString("payment_code")
+                                transactionData["payment_code"] =
+                                    jsonResponse.optString("payment_code")
                                 transactionData["retail_outlet"] = retailOutlet
                             }
                         }
 
                         db.collection("transactions").document(transactionId)
                             .set(transactionData)
-                            .addOnSuccessListener {
-                                onSuccess(transactionId, transactionData)
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("FirestoreError", "Error: ${e.message}")
-                                onError("Gagal menyimpan: ${e.message}")
-                            }
-
+                            .addOnSuccessListener { onSuccess(transactionId, transactionData) }
+                            .addOnFailureListener { e -> onError("Gagal menyimpan: ${e.message}") }
                     } catch (e: JSONException) {
-                        Log.e("JSONError", "Parsing error: ${e.message}")
+                        Log.e("XenditError", "Parsing error: ${e.message}")
                         onError("Error parsing: ${e.message}")
                     }
                 }
             })
-
         } catch (e: Exception) {
-            Log.e("TransactionError", "Unexpected error: ${e.message}")
+            Log.e("XenditError", "Unexpected error: ${e.message}")
             onError("Kesalahan: ${e.message}")
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun getExpiryTime(): String {
-        return Instant.now()
-            .plus(24, ChronoUnit.HOURS)
+        return Instant.now().plus(24, ChronoUnit.HOURS)
             .atZone(ZoneId.of("UTC"))
             .format(DateTimeFormatter.ISO_INSTANT)
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        transactionListener?.remove()
     }
 }

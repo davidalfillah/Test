@@ -1,9 +1,15 @@
 package com.example.test.ui.screens
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,283 +21,229 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test.ui.viewModels.PaymentViewModel
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import java.text.NumberFormat
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
     viewModel: PaymentViewModel,
     userId: String,
-    amount: Int,
+    relatedId: String,
+    relatedType: String,
     onPaymentSuccess: (String, Map<String, Any>) -> Unit,
     onPaymentError: (String) -> Unit
 ) {
-    var selectedMethod by remember { mutableStateOf("VA") }
-    var mobileNumber by remember { mutableStateOf("") }
-    var bankCode by remember { mutableStateOf("BCA") }
-    var ewalletChannel by remember { mutableStateOf("ID_OVO") }
-    var retailOutlet by remember { mutableStateOf("ALFAMART") }
-    var qrisType by remember { mutableStateOf("DYNAMIC") }
-    var isLoading by remember { mutableStateOf(false) }
+    var selectedAmount by remember { mutableStateOf(50000) }
+    var selectedPaymentMethod by remember { mutableStateOf("VA") }
+    var transactionId by remember { mutableStateOf<String?>(null) }
+    var transactionStatus by remember { mutableStateOf("PENDING") }
+    var paymentDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
+    var expandedMethod by remember { mutableStateOf(false) }
+    var expandedAmount by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val mobileNumber = "+6281234567890" // Ganti dengan nomor pengguna dari autentikasi
+
+    LaunchedEffect(transactionId) {
+        transactionId?.let { id ->
+            FirebaseFirestore.getInstance()
+                .collection("transactions")
+                .document(id)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        errorMessage = "Error: ${e.message}"
+                        onPaymentError("Error: ${e.message}")
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null && snapshot.exists()) {
+                        val data = snapshot.data
+                        transactionStatus = data?.get("status") as? String ?: "PENDING"
+                        paymentDetails = data
+                        if (transactionStatus == "COMPLETED") {
+                            data?.let { onPaymentSuccess(id, it) }
+                        }
+                    }
+                }
+        }
+    }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Pilih Metode Pembayaran",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Text("Pembayaran untuk $relatedType", style = MaterialTheme.typography.titleMedium)
+        Text("ID: $relatedId", style = MaterialTheme.typography.bodyMedium)
 
-        // Pilihan metode pembayaran
-        PaymentMethodSelector(
-            selectedMethod = selectedMethod,
-            onMethodSelected = { selectedMethod = it }
-        )
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Form tambahan berdasarkan metode pembayaran
-        when (selectedMethod) {
-            "VA" -> {
-                BankCodeDropdown(
-                    selectedBank = bankCode,
-                    onBankSelected = { bankCode = it }
-                )
-            }
-            "QRIS" -> {
-                QrisTypeSelector(
-                    selectedType = qrisType,
-                    onTypeSelected = { qrisType = it }
-                )
-            }
-            "EWALLET" -> {
-                EwalletSelector(
-                    selectedChannel = ewalletChannel,
-                    onChannelSelected = { ewalletChannel = it }
-                )
-                if (ewalletChannel == "ID_OVO") {
-                    OutlinedTextField(
-                        value = mobileNumber,
-                        onValueChange = { mobileNumber = it },
-                        label = { Text("Nomor HP") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+        val amounts = listOf(50000, 100000, 200000, 500000)
+        ExposedDropdownMenuBox(
+            expanded = expandedAmount,
+            onExpandedChange = { expandedAmount = !expandedAmount }
+        ) {
+            OutlinedTextField(
+                value = "Rp $selectedAmount",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Nominal") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedAmount) },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expandedAmount,
+                onDismissRequest = { expandedAmount = false }
+            ) {
+                amounts.forEach { amount ->
+                    DropdownMenuItem(
+                        text = { Text("Rp $amount") },
+                        onClick = {
+                            selectedAmount = amount
+                            expandedAmount = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
-            "RETAIL" -> {
-                RetailOutletDropdown(
-                    selectedOutlet = retailOutlet,
-                    onOutletSelected = { retailOutlet = it }
-                )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        val paymentMethods = listOf("VA", "QRIS", "EWALLET", "RETAIL")
+        ExposedDropdownMenuBox(
+            expanded = expandedMethod,
+            onExpandedChange = { expandedMethod = !expandedMethod }
+        ) {
+            OutlinedTextField(
+                value = selectedPaymentMethod,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Metode Pembayaran") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMethod) },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expandedMethod,
+                onDismissRequest = { expandedMethod = false }
+            ) {
+                paymentMethods.forEach { method ->
+                    DropdownMenuItem(
+                        text = { Text(method) },
+                        onClick = {
+                            selectedPaymentMethod = method
+                            expandedMethod = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
 
-        // Tombol Bayar
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = {
-                isLoading = true
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    viewModel.createTransaction(
-                        userId = userId,
-                        amount = amount,
-                        paymentMethod = selectedMethod,
-                        mobileNumber = if (selectedMethod == "EWALLET" && ewalletChannel == "ID_OVO") mobileNumber else null,
-                        bankCode = bankCode,
-                        ewalletChannel = ewalletChannel,
-                        retailOutlet = retailOutlet,
-                        qrisType = qrisType,
-                        onSuccess = { transactionId, data ->
-                            isLoading = false
-                            onPaymentSuccess(transactionId, data)
-                        },
-                        onError = { error ->
-                            isLoading = false
-                            onPaymentError(error)
-                        }
-                    )
-                }
+                viewModel.createTransaction(
+                    userId = userId,
+                    amount = selectedAmount,
+                    paymentMethod = selectedPaymentMethod,
+                    relatedId = relatedId,
+                    relatedType = relatedType,
+                    mobileNumber = if (selectedPaymentMethod == "EWALLET") mobileNumber else null,
+                    onSuccess = { id, data ->
+                        transactionId = id
+                        paymentDetails = data
+                        errorMessage = null
+                    },
+                    onError = { error ->
+                        errorMessage = error
+                        onPaymentError(error)
+                    }
+                )
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            } else {
-                Text("Bayar Sekarang - Rp ${amount.formatAsCurrency()}")
-            }
-        }
-    }
-}
-
-@Composable
-fun PaymentMethodSelector(
-    selectedMethod: String,
-    onMethodSelected: (String) -> Unit
-) {
-    val methods = listOf("VA" to "Virtual Account", "QRIS" to "QRIS", "EWALLET" to "E-Wallet", "RETAIL" to "Retail Outlet")
-
-    Column {
-        methods.forEach { (key, label) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onMethodSelected(key) }
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selectedMethod == key,
-                    onClick = { onMethodSelected(key) }
-                )
-                Text(text = label, modifier = Modifier.padding(start = 8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun BankCodeDropdown(selectedBank: String, onBankSelected: (String) -> Unit) {
-    val banks = listOf("BCA", "BRI", "BNI", "MANDIRI")
-    DropdownMenuComponent("Pilih Bank", banks, selectedBank, onBankSelected)
-}
-
-@Composable
-fun EwalletSelector(selectedChannel: String, onChannelSelected: (String) -> Unit) {
-    val ewalletOptions = listOf("ID_OVO" to "OVO", "ID_DANA" to "DANA", "ID_SHOPEEPAY" to "ShopeePay")
-    DropdownMenuComponent(
-        label = "Pilih E-Wallet",
-        options = ewalletOptions.map { it.second },
-        selectedOption = ewalletOptions.find { it.first == selectedChannel }?.second ?: "",
-        onOptionSelected = { selected -> onChannelSelected(ewalletOptions.find { it.second == selected }!!.first) }
-    )
-}
-
-@Composable
-fun RetailOutletDropdown(selectedOutlet: String, onOutletSelected: (String) -> Unit) {
-    val outlets = listOf("ALFAMART", "INDOMARET")
-    DropdownMenuComponent("Pilih Outlet", outlets, selectedOutlet, onOutletSelected)
-}
-
-@Composable
-fun QrisTypeSelector(selectedType: String, onTypeSelected: (String) -> Unit) {
-    val types = listOf("DYNAMIC" to "Dinamis", "STATIC" to "Statis")
-    DropdownMenuComponent(
-        label = "Tipe QRIS",
-        options = types.map { it.second },
-        selectedOption = types.find { it.first == selectedType }?.second ?: "",
-        onOptionSelected = { selected -> onTypeSelected(types.find { it.second == selected }!!.first) }
-    )
-}
-
-@Composable
-fun DropdownMenuComponent(
-    label: String,
-    options: List<String>,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = selectedOption,
-            onValueChange = {},
-            label = { Text(label) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { if (enabled) expanded = true },
-            readOnly = true,
-            enabled = enabled,
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Dropdown",
-                    modifier = Modifier
-                        .clickable(enabled = enabled) { expanded = true }
-                        .rotate(if (expanded) 180f else 0f) // Animasi rotasi ikon
-                )
-            }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
             modifier = Modifier.fillMaxWidth()
         ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) }, // Parameter text untuk konten utama
-                    onClick = {
-                        onOptionSelected(option)
-                        expanded = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = enabled,
-                    leadingIcon = {
-                        // Opsional: Tambahkan ikon di depan setiap opsi jika diinginkan
-                        // Icon(Icons.Default.Check, contentDescription = null, tint = if (option == selectedOption) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    },
-                    trailingIcon = {
-                        // Opsional: Tambahkan ikon di belakang setiap opsi jika diinginkan
-                        if (option == selectedOption) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
-                    colors = MenuDefaults.itemColors(), // Menggunakan warna default Material
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                )
+            Text("Bayar Sekarang")
+        }
+
+        paymentDetails?.let { details ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Transaction ID: ${details["transactionId"]}")
+            Text("Status: $transactionStatus")
+            Text("Jumlah: Rp ${details["amount"]}")
+            when (selectedPaymentMethod) {
+                "VA" -> {
+                    Text("Nomor VA: ${details["va_number"]}")
+                    Text("Bank: ${details["bank_code"]}")
+                }
+                "QRIS" -> {
+                    details["qris_url"]?.let { url ->
+                        QrCodeImage(qrCodeString = url as String)
+                    }
+                }
+                "EWALLET" -> {
+                    Text("Referensi: ${details["ewallet_ref"]}")
+                    Text("Channel: ${details["channel_code"]}")
+                }
+                "RETAIL" -> {
+                    Text("Kode Pembayaran: ${details["payment_code"]}")
+                    Text("Outlet: ${details["retail_outlet"]}")
+                }
+
+                else -> {}
             }
+        }
+
+        errorMessage?.let {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = it, color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
-@Preview(showBackground = true)
+// Fungsi QR Code tetap sama
 @Composable
-fun DropdownMenuComponentPreview() {
-    val options = listOf("BCA", "BRI", "BNI", "MANDIRI")
-    var selectedOption by remember { mutableStateOf(options[0]) }
-
-    DropdownMenuComponent(
-        label = "Pilih Bank",
-        options = options,
-        selectedOption = selectedOption,
-        onOptionSelected = { selectedOption = it }
-    )
+fun QrCodeImage(qrCodeString: String) {
+    val bitmap = generateQrCode(qrCodeString)
+    bitmap?.let {
+        Image(
+            bitmap = it.asImageBitmap(),
+            contentDescription = "QR Code",
+            modifier = Modifier.size(200.dp)
+        )
+    }
 }
 
-// Extension function untuk format currency
-fun Int.formatAsCurrency(): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-    return format.format(this).replace("Rp", "Rp ").replace(",00", "")
+fun generateQrCode(text: String): Bitmap? {
+    return try {
+        val qrCodeWriter = QRCodeWriter()
+        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 200, 200)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+            }
+        }
+        bitmap
+    } catch (e: Exception) {
+        Log.e("QrCodeError", "Error generating QR: ${e.message}")
+        null
+    }
 }
 
-// Penggunaan
-@Preview
-@Composable
-fun PaymentScreenPreview() {
-    val viewModel = viewModel<PaymentViewModel>()
-    PaymentScreen(
-        viewModel = viewModel,
-        userId = "user123",
-        amount = 100000,
-        onPaymentSuccess = { _, _ -> },
-        onPaymentError = { }
-    )
+// Extension function untuk Toast
+fun Context.showToast(message: String) {
+    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,12 +37,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -53,27 +48,23 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
-import kotlinx.coroutines.launch
 import com.example.test.AuthViewModel
+import com.example.test.ui.components.PublicComplaints
 import com.example.test.ui.components.SlideComponentBanner
-import com.example.test.ui.components.SlideComponentCharity
 import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.components.UserProfileImage
 import com.example.test.ui.dataTest.NewsData
-import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.products
+import com.example.test.ui.viewModels.Ad
+import com.example.test.ui.viewModels.AdViewModel
 import com.google.firebase.Timestamp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 
 
 data class Product(
@@ -101,8 +92,11 @@ fun HomeScreen(
     paddingValues: PaddingValues,
     authViewModel: AuthViewModel
 ) {
+    val ads = remember { mutableStateOf(emptyList<Ad>()) }
+    val isLoading = remember { mutableStateOf(true) } // Status loading
     val user by authViewModel.user.collectAsState()
     val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
+    val adViewModel = AdViewModel()
 
     LaunchedEffect(user, isProfileComplete) {
         if (user != null && !isProfileComplete) {
@@ -113,8 +107,12 @@ fun HomeScreen(
         }
     }
 
-
-
+    LaunchedEffect(Unit) {
+        adViewModel.getAds { fetchedAds ->
+            ads.value = fetchedAds
+            isLoading.value = false // Matikan loading setelah data diambil
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -440,12 +438,14 @@ fun HomeScreen(
                     }
                 }
                 SlideComponentBanner(
-                    items = banners.shuffled().take(3),
-                    onItemClick = { menu ->
-                        println("Menu yang diklik: $menu")
-                    },
-                    scrollInterval = 5000L
+                    items = ads.value,
+                    isLoading = isLoading.value,
+                    onItemClick = { actionValue ->
+                        Log.d("Banner Clicked", "Aksi: $actionValue")
+                    }
                 )
+
+                PublicComplaints()
                 SlideComponentNews(
                     items = NewsData.newsList,
                     onItemClick = { menu ->
@@ -468,5 +468,6 @@ fun HomeScreen(
             }
 
         }
+
     }
 }

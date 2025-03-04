@@ -26,6 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -80,6 +83,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: "home"
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     setStatusBarColor(
         color = when (currentRoute) {
@@ -140,42 +144,48 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
 
         ) {
             composable(
-                route = "payment/{userId}",
+                route = "payment/{userId}/{relatedId}/{relatedType}",
                 arguments = listOf(
-                    navArgument("userId") {
-                        type = NavType.StringType
-                        defaultValue = "" // Nilai default jika userId tidak ada
-                    }
+                    navArgument("userId") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("relatedId") { type = NavType.StringType },
+                    navArgument("relatedType") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                val viewModel = viewModel<PaymentViewModel>() // Menggunakan ViewModel dengan factory bawaan
+                val relatedId = backStackEntry.arguments?.getString("relatedId") ?: ""
+                val relatedType = backStackEntry.arguments?.getString("relatedType") ?: ""
+                val viewModel = viewModel<PaymentViewModel>()
+
+                // Tampilkan Toast di thread UI
+                LaunchedEffect(errorMessage) {
+                    errorMessage?.let {
+                        navController.context.showToast(it)
+                        errorMessage = null // Reset setelah ditampilkan
+                    }
+                }
 
                 PaymentScreen(
                     viewModel = viewModel,
                     userId = userId,
-                    amount = 20000, // Hardcoded untuk contoh, bisa dijadikan parameter
-                    onPaymentSuccess = { transactionId, data ->
-                        // Navigasi ke layar sukses dengan membawa data transaksi
+                    relatedId = relatedId,
+                    relatedType = relatedType,
+                    onPaymentSuccess = { transactionId, _ ->
                         navController.navigate("payment_success/$transactionId") {
-                            popUpTo("payment/{userId}") { inclusive = false }
+                            popUpTo("payment/{userId}/{relatedId}/{relatedType}") { inclusive = false }
                         }
                     },
-                    onPaymentError = { errorMessage ->
-                        navController.context.showToast(errorMessage)
+                    onPaymentError = { error ->
+                        errorMessage = error // Set error untuk ditampilkan di UI
                     }
                 )
             }
 
-            // Rute tambahan untuk layar sukses (opsional)
             composable(
                 route = "payment_success/{transactionId}",
-                arguments = listOf(
-                    navArgument("transactionId") { type = NavType.StringType }
-                )
+                arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
-                PaymentSuccessScreen(transactionId = transactionId, navController = navController)
+                PaymentSuccessScreen(transactionId = transactionId)
             }
             composable("donation_input/{title}") { backStackEntry ->
                 val title = backStackEntry.arguments?.getString("title") ?: "general"
@@ -341,36 +351,18 @@ fun PreviewMainScreen() {
 }
 
 
-// Extension function untuk menampilkan Toast
 fun Context.showToast(message: String) {
     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
 
-// Contoh PaymentSuccessScreen
 @Composable
-fun PaymentSuccessScreen(transactionId: String, navController: NavHostController) {
+fun PaymentSuccessScreen(transactionId: String) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Pembayaran Berhasil!",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "ID Transaksi: $transactionId",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = { navController.popBackStack("payment/{userId}", inclusive = false) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Kembali")
-        }
+        Text("Pembayaran Berhasil!", style = MaterialTheme.typography.titleLarge)
+        Text("Transaction ID: $transactionId", style = MaterialTheme.typography.bodyMedium)
     }
 }

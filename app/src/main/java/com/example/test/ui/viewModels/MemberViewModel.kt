@@ -8,6 +8,7 @@ import com.example.test.ui.dataType.BranchLevel
 import com.example.test.ui.dataType.BranchLocation
 import com.example.test.ui.dataType.Member
 import com.example.test.ui.dataType.Umkm
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -82,6 +83,7 @@ open class MemberViewModel : ViewModel() {
                             fullName = fullName,
                             nik = nik,
                             birthDate = birthDate,
+                            joinDateDay = Timestamp.now(),
                             gender = gender,
                             religion = religion,
                             education = education,
