@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,8 +20,10 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +57,7 @@ import com.example.test.AuthViewModel
 import com.example.test.DashboardScreen
 import com.example.test.R
 import com.example.test.setStatusBarColor
+import com.example.test.ui.screens.AboutGribScreen
 import com.example.test.ui.screens.AccountScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
@@ -87,12 +96,12 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
 
     setStatusBarColor(
         color = when (currentRoute) {
-            "home" -> MaterialTheme.colorScheme.primary
-            "shopping" -> MaterialTheme.colorScheme.background
-            "chat" -> MaterialTheme.colorScheme.primary
-            "news_detail/{newsId}" -> MaterialTheme.colorScheme.primary
-            "account" -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.primary
+            "home" -> colorScheme.primary
+            "shopping" -> colorScheme.background
+            "chat" -> colorScheme.primary
+            "news_detail/{newsId}" -> colorScheme.primary
+            "account" -> colorScheme.primary
+            else -> colorScheme.primary
         },
         useDarkIcons = when (currentRoute) { // Gunakan warna ikon status bar yang sesuai
             "home" -> false
@@ -101,7 +110,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             "chat" -> false
             "digitalCard/{member}" -> true
             "biodataMember/{memberJson}" -> true
-            "news_detail/{newsId}" -> false
+            "news_detail/{newsId}" -> true
             "news" -> false
             "homeKta/{userId}"-> true
             "account" -> false
@@ -112,27 +121,11 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute !in listOf(
-                    "login",
-                    "register",
-                    "donations",
-                    "news",
-                    "status",
-                    "success?nextScreen={nextScreen}",
-                    "registerGrib",
-                    "registerUmkm",
-                    "profile_setup",
-                    "donation_input/{title}",
-                    "digitalCard/{member}",
-                    "homeKta/{userId}",
-                    "biodataMember/{memberJson}",
-                    "uploadKtp",
-                    "registerGrib?nik={nik}&name={name}&address={address}&imageUrl={imageUrl}&birthDate={birthDate}",
-                    "chat_detail/{chatId}",
-                    "kta/{userId}",
-                    "donation_detail/{donationId}",
-                    "news_detail/{newsId}",
-                    "otp_screen/{phoneNumber}"))
+            if (currentRoute in listOf(
+                    "home",
+                    "shopping",
+                    "chat",
+                    "account",))
             {
                 BottomNavigationBar(navController)
             }
@@ -211,6 +204,9 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     },
                     navController = navController // Tambahkan untuk navigasi kembali
                 )
+            }
+            composable("aboutGrib") { backStackEntry ->
+                AboutGribScreen(navController)
             }
             composable("news_detail/{newsId}") { backStackEntry ->
                 val newsId = backStackEntry.arguments?.getString("newsId") ?: "1"
@@ -318,7 +314,10 @@ fun BottomNavigationBar(navController: NavHostController) {
 
     val currentRoute = navController.currentDestination?.route
 
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+    NavigationBar(containerColor = colorScheme.onPrimary,
+        tonalElevation = 0.dp,
+        modifier = Modifier.shadow(elevation = 8.dp, shape = RectangleShape)
+        ) {
         items.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -326,6 +325,15 @@ fun BottomNavigationBar(navController: NavHostController) {
                 icon = { Icon(item.icon, contentDescription = item.title) },
                 label = { Text(item.title) },
                 selected = isSelected,
+                colors = NavigationBarItemColors(
+                    selectedIconColor = colorScheme.onPrimary,
+                    selectedTextColor = colorScheme.primary,
+                    unselectedIconColor = colorScheme.primary,
+                    unselectedTextColor = colorScheme.primary,
+                    selectedIndicatorColor = colorScheme.primary,
+                    disabledIconColor = colorScheme.primary,
+                    disabledTextColor = colorScheme.primary
+                ),
                 onClick = {
                     if (!isSelected) { // Cegah klik ulang jika sudah di route yang sama
                         navController.navigate(item.route) {

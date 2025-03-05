@@ -7,11 +7,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,20 +33,26 @@ fun NewsDetailScreen(newsId: String, navController:NavHostController) {
         topBar = {
             TopAppBar(
                 title = { Text(
-                    text = news.title,
+                    text = "",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )  },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack, // Ikon panah kembali
                             contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            imageVector = Icons.Default.Share, // Ikon pencarian
+                            contentDescription = "hare",
                         )
                     }
                 }
@@ -59,6 +67,13 @@ fun NewsDetailScreen(newsId: String, navController:NavHostController) {
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            Text(
+                text = news.title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AsyncImage(
                 model = news.imageUrl,
                 contentDescription = news.title,
@@ -67,13 +82,6 @@ fun NewsDetailScreen(newsId: String, navController:NavHostController) {
                     .fillMaxWidth()
                     .height(200.dp)
                     .padding(bottom = 16.dp)
-            )
-            // Judul Berita
-            Text(
-                text = news.title,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             // Isi Berita

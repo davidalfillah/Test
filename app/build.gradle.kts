@@ -66,6 +66,10 @@ dependencies {
     implementation ("com.google.zxing:core:3.5.3")
     implementation ("com.xendit:xendit-android:4.2.1")
 
+    implementation ("androidx.media3:media3-exoplayer:1.5.1")
+    implementation ("androidx.media3:media3-ui:1.5.1")
+    implementation ("androidx.media3:media3-common:1.5.1")
+
     // To recognize Latin script
     implementation ("com.google.mlkit:text-recognition:16.0.1")
 
