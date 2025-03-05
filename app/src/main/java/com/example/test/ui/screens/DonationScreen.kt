@@ -99,8 +99,8 @@ fun DonationScreen(
             TopAppBar(
                 title = { Text("Donasi") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    titleContentColor = MaterialTheme.colorScheme.onTertiary
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondary
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -135,7 +135,7 @@ fun DonationScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.tertiary)
+                    .background(MaterialTheme.colorScheme.secondary)
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -143,7 +143,7 @@ fun DonationScreen(
                     text = "Bersama Kita Wujudkan Kebaikan",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onTertiary,
+                    color = MaterialTheme.colorScheme.onSecondary,
                     textAlign = TextAlign.Center,
                     maxLines = 2
                 )
@@ -232,7 +232,7 @@ fun CategoryButton(category: Category, onClick: () -> Unit) {
             modifier = Modifier
                 .size(64.dp)
                 .background(
-                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(10.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -240,7 +240,7 @@ fun CategoryButton(category: Category, onClick: () -> Unit) {
             Icon(
                 imageVector = category.icon,
                 contentDescription = category.name,
-                tint = MaterialTheme.colorScheme.tertiary,
+                tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(54.dp)
             )
         }
@@ -296,13 +296,13 @@ fun CharityDonationCarouselItem(charity: Donation, onClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.tertiaryContainer)
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
                 ) {
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        trackColor = MaterialTheme.colorScheme.tertiaryContainer
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        trackColor = MaterialTheme.colorScheme.secondaryContainer
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -369,13 +369,13 @@ fun CharityDonationListItem(charity: Donation, onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.tertiaryContainer)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 LinearProgressIndicator(
                     progress = progress,
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    trackColor = MaterialTheme.colorScheme.tertiaryContainer
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    trackColor = MaterialTheme.colorScheme.secondaryContainer
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))

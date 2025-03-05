@@ -53,22 +53,25 @@ fun SlideComponentBanner(
     onItemClick: (String) -> Unit,
     scrollInterval: Long = 6000L
 ) {
-    val pagerState = rememberPagerState { items.size }
+    val pagerState = rememberPagerState(
+        initialPage = items.size * 1000, // Mulai dari tengah untuk mendukung scroll dua arah
+        pageCount = { Int.MAX_VALUE } // Jumlah halaman tak terbatas
+    )
     val configuration = LocalConfiguration.current
-    val isAutoScrolling = remember { mutableStateOf(true) } // Kontrol auto-scroll
-    val isUserInteracting = remember { mutableStateOf(false) } // Deteksi interaksi pengguna
+    val isAutoScrolling = remember { mutableStateOf(true) }
+    val isUserInteracting = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val screenWidth = configuration.screenWidthDp.dp
     val bannerWidth = screenWidth * 0.88f
     val bannerHeight = bannerWidth * 0.5f
 
-    // Auto-scroll effect
+// Auto-scroll effect
     LaunchedEffect(items, isAutoScrolling.value) {
         if (items.isNotEmpty() && !isLoading && isAutoScrolling.value) {
             while (isActive) {
                 delay(scrollInterval)
-                val nextPage = (pagerState.currentPage + 1) % items.size
+                val nextPage = pagerState.currentPage + 1
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(
                         page = nextPage,
@@ -82,14 +85,14 @@ fun SlideComponentBanner(
         }
     }
 
-    // Deteksi interaksi pengguna
+// Deteksi interaksi pengguna
     LaunchedEffect(Unit) {
         snapshotFlow { isUserInteracting.value }
             .collect { interacting ->
                 if (interacting) {
-                    isAutoScrolling.value = false // Jeda saat pengguna menyentuh
+                    isAutoScrolling.value = false
                 } else {
-                    delay(5000L) // Lanjutkan setelah 5 detik tanpa interaksi
+                    delay(5000L)
                     isAutoScrolling.value = true
                 }
             }
@@ -123,16 +126,16 @@ fun SlideComponentBanner(
                                 onDragEnd = { isUserInteracting.value = false },
                                 onDragCancel = { isUserInteracting.value = false },
                                 onDrag = { change, _ ->
-                                    // Tandai bahwa pengguna sedang berinteraksi selama drag
                                     isUserInteracting.value = true
-                                    // Konsumsi event drag agar tidak memengaruhi komponen lain
                                     change.consume()
                                 }
                             )
                         },
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) { page ->
-                    val ad = items[page]
+                    // Map indeks tak terbatas ke indeks item aktual
+                    val actualIndex = page % items.size
+                    val ad = items[actualIndex]
                     Image(
                         painter = rememberAsyncImagePainter(ad.imageUrl),
                         contentDescription = "Banner Image",
@@ -146,7 +149,6 @@ fun SlideComponentBanner(
                                         (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                                         ).absoluteValue
 
-                                // Animasi alpha antara 50% dan 100%
                                 alpha = lerp(
                                     start = 0.5f,
                                     stop = 1f,

@@ -103,12 +103,14 @@ fun SlideComponentProduct(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     rowItems.forEach { item ->
-                        Box(
+                        Card(
+                            elevation = CardDefaults.cardElevation(2.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp)) // Bisa dihapus, karena Card sudah bisa berbentuk rounded
-                                .clickable { /* Aksi ketika item diklik */ }
-                                .background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .clickable { /* Aksi ketika item diklik */ },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                            )
                         ) {
                             Column {
                                 AsyncImage(
@@ -121,6 +123,13 @@ fun SlideComponentProduct(
                                 )
                                 Column(modifier = Modifier.padding(8.dp)) {
                                     Text(
+                                        text = "${formatCurrency2(item.price.toLong())}",
+                                        fontSize = 12.sp,
+                                        lineHeight = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
                                         text = item.title,
                                         fontSize = 12.sp,
                                         color = Color.Black,
@@ -130,9 +139,12 @@ fun SlideComponentProduct(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "${formatCurrency2(item.price.toLong())}",
+                                        text = item.location,
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
+                                        color = Color.Black,
+                                        lineHeight = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }

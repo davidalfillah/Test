@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,6 +63,9 @@ import androidx.navigation.NavHostController
 import coil3.compose.rememberAsyncImagePainter
 import com.example.test.AuthViewModel
 import com.example.test.R
+import com.example.test.ui.components.CardConfig
+import com.example.test.ui.components.CardOrientation
+import com.example.test.ui.components.DynamicCard
 import com.example.test.ui.components.PublicComplaints
 import com.example.test.ui.components.ShareBottomSheet
 import com.example.test.ui.components.SlideComponentBanner
@@ -79,6 +83,7 @@ data class Product(
     val image: String,       // ID Gambar dari drawable
     val title: String,    // Judul donasi
     val price: Int,      // Target donasi (contoh: Rp10.000.000)
+    val location: String,
 )
 
 data class User(
@@ -136,6 +141,13 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary
         ), actions = { // Tambahkan aksi di kanan atas
+            IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
+                Icon(
+                    imageVector = Icons.Default.Favorite, // Ikon lonceng
+                    contentDescription = "Notifikasi",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
             IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
                 Icon(
                     imageVector = Icons.Default.Notifications, // Ikon lonceng
@@ -272,6 +284,7 @@ fun HomeScreen(
                 }
 
             }
+
             Box(
                 modifier = Modifier
                     .height(77.dp)
@@ -279,14 +292,15 @@ fun HomeScreen(
                     .background(color = MaterialTheme.colorScheme.primary)
             )
             Column(modifier = Modifier.offset(y = (-75).dp)) {
-                Surface(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
-                        .shadow(8.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(16.dp),
+                        .padding(16.dp),
+                    elevation = CardDefaults.elevatedCardElevation(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        contentColor = Color.White
+                    )
                     )
 
                 {
@@ -404,6 +418,7 @@ fun HomeScreen(
                         }
                     }
                 }
+
                 Box(modifier = Modifier
                     .fillMaxWidth()
                     .clickable {

@@ -113,6 +113,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             "news_detail/{newsId}" -> true
             "news" -> false
             "homeKta/{userId}"-> true
+            "aboutGrib"-> true
             "account" -> false
             "profile_setup" -> true
             else -> false
@@ -328,8 +329,8 @@ fun BottomNavigationBar(navController: NavHostController) {
                 colors = NavigationBarItemColors(
                     selectedIconColor = colorScheme.onPrimary,
                     selectedTextColor = colorScheme.primary,
-                    unselectedIconColor = colorScheme.primary,
-                    unselectedTextColor = colorScheme.primary,
+                    unselectedIconColor = colorScheme.outline,
+                    unselectedTextColor = colorScheme.outline,
                     selectedIndicatorColor = colorScheme.primary,
                     disabledIconColor = colorScheme.primary,
                     disabledTextColor = colorScheme.primary

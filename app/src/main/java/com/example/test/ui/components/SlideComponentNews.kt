@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
@@ -68,14 +69,16 @@ fun SlideComponentNews(
             flingBehavior = rememberSnapperFlingBehavior(lazyListState)
         ) {
             items(items) { item ->
-                Box(
+                Card(
+                    elevation = CardDefaults.cardElevation(2.dp),
                     modifier = Modifier
                         .height(175.dp)
                         .width(250.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onItemClick(item.articleId) }
-                        .background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
+                        .clickable { onItemClick(item.articleId) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                    )
+                ){
                     Column {
                         AsyncImage(
                             model = item.imageUrl,
