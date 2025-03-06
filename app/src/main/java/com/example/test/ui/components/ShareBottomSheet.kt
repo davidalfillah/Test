@@ -66,6 +66,7 @@ fun ShareBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         sheetState = sheetState
     ) {
         LazyColumn(

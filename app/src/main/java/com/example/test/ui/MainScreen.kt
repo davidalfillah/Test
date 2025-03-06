@@ -61,6 +61,7 @@ import com.example.test.ui.screens.AboutGribScreen
 import com.example.test.ui.screens.AccountScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
+import com.example.test.ui.screens.CustomCamera
 import com.example.test.ui.screens.DigitalCardScreen
 import com.example.test.ui.screens.DonationDetailScreen
 import com.example.test.ui.screens.DonationInputScreen
@@ -80,7 +81,9 @@ import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 import com.example.test.ui.screens.UploadKtpScreen
+import com.example.test.ui.screens.saveBitmapToCache
 import com.example.test.ui.viewModels.ChatViewModel
+import com.example.test.ui.viewModels.MemberViewModel
 import com.example.test.ui.viewModels.PaymentViewModel
 
 //Email : hellogrib430@gmail.com
@@ -97,6 +100,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
     setStatusBarColor(
         color = when (currentRoute) {
             "home" -> colorScheme.primary
+            "aboutGrib" -> colorScheme.background
             "shopping" -> colorScheme.background
             "chat" -> colorScheme.primary
             "news_detail/{newsId}" -> colorScheme.primary
@@ -181,6 +185,13 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
                 PaymentSuccessScreen(transactionId = transactionId)
             }
+            composable("customCamera") {
+                CustomCamera(navController) { capturedBitmap ->
+                    val context = navController.context
+                    var bitmap = capturedBitmap
+                    var imageUri = saveBitmapToCache(context, capturedBitmap)
+                }
+            }
             composable("donation_input/{title}") { backStackEntry ->
                 val title = backStackEntry.arguments?.getString("title") ?: "general"
                 DonationInputScreen(
@@ -233,6 +244,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("uploadKtp") {
                 UploadKtpScreen(
                     navController,
+                    MemberViewModel()
                 )
             }
 

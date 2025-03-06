@@ -28,8 +28,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -43,6 +47,7 @@ import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -54,7 +59,7 @@ fun SlideComponentBanner(
     scrollInterval: Long = 6000L
 ) {
     val pagerState = rememberPagerState(
-        initialPage = items.size * 1000, // Mulai dari tengah untuk mendukung scroll dua arah
+        initialPage = (items.size * 1000) + 1, // Mulai dari tengah untuk mendukung scroll dua arah
         pageCount = { Int.MAX_VALUE } // Jumlah halaman tak terbatas
     )
     val configuration = LocalConfiguration.current
@@ -66,7 +71,7 @@ fun SlideComponentBanner(
     val bannerWidth = screenWidth * 0.88f
     val bannerHeight = bannerWidth * 0.5f
 
-// Auto-scroll effect
+    // Auto-scroll effect
     LaunchedEffect(items, isAutoScrolling.value) {
         if (items.isNotEmpty() && !isLoading && isAutoScrolling.value) {
             while (isActive) {
@@ -85,7 +90,7 @@ fun SlideComponentBanner(
         }
     }
 
-// Deteksi interaksi pengguna
+    // Deteksi interaksi pengguna
     LaunchedEffect(Unit) {
         snapshotFlow { isUserInteracting.value }
             .collect { interacting ->
@@ -119,21 +124,12 @@ fun SlideComponentBanner(
                     state = pagerState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { isUserInteracting.value = true },
-                                onDragEnd = { isUserInteracting.value = false },
-                                onDragCancel = { isUserInteracting.value = false },
-                                onDrag = { change, _ ->
-                                    isUserInteracting.value = true
-                                    change.consume()
-                                }
-                            )
-                        },
-                    contentPadding = PaddingValues(horizontal = 16.dp)
+                        .padding(vertical = 12.dp),
+                    contentPadding = PaddingValues(
+                        horizontal = (screenWidth - bannerWidth) / 2
+                    ),
+                    pageSpacing = 8.dp
                 ) { page ->
-                    // Map indeks tak terbatas ke indeks item aktual
                     val actualIndex = page % items.size
                     val ad = items[actualIndex]
                     Image(
@@ -143,6 +139,7 @@ fun SlideComponentBanner(
                             .width(bannerWidth)
                             .height(bannerHeight)
                             .clip(RoundedCornerShape(8.dp))
+
                             .clickable { onItemClick(ad.actionValue) }
                             .graphicsLayer {
                                 val pageOffset = (

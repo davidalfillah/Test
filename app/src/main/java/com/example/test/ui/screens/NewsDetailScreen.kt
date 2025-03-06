@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
+import com.example.test.ui.components.ShareBottomSheet
 import com.example.test.ui.components.formatNewsContent
 import com.example.test.ui.dataTest.NewsArticle
 import com.example.test.ui.dataTest.NewsData
@@ -28,6 +29,7 @@ import com.example.test.ui.dataTest.NewsData
 fun NewsDetailScreen(newsId: String, navController:NavHostController) {
     // Simulasi data berdasarkan ID (Bisa diganti dengan data dari API atau Database)
     val news = remember(newsId) { getNewsById(newsId) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold (
         topBar = {
@@ -49,7 +51,9 @@ fun NewsDetailScreen(newsId: String, navController:NavHostController) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        showBottomSheet = true
+                    },) {
                         Icon(
                             imageVector = Icons.Default.Share, // Ikon pencarian
                             contentDescription = "hare",
@@ -90,6 +94,13 @@ fun NewsDetailScreen(newsId: String, navController:NavHostController) {
                 fontSize = 16.sp,
                 lineHeight = 22.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+        if (showBottomSheet) {
+            ShareBottomSheet(
+                onDismiss = {
+                    showBottomSheet = false
+                }, link = "", title = "Bagikan Berita",
             )
         }
     }

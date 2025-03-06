@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,6 +49,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.example.test.R
+import com.example.test.ui.viewModels.MemberViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.storage
@@ -59,56 +61,53 @@ import java.io.IOException
 import java.util.UUID
 
 @Composable
-fun UploadKtpScreen(navController: NavController) {
+fun UploadKtpScreen(navController: NavController, viewModel: MemberViewModel) {
     val context = LocalContext.current
     val cameraPermission = Manifest.permission.CAMERA
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var ktpData by remember { mutableStateOf<MemberViewModel.KTPData?>(null) }
 
-    // Launcher untuk membuka galeri
     val getImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { imageUri = it }
+        imageUri = uri
     }
 
-    // Launcher untuk mengambil foto dari kamera
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview(),
-        onResult = { capturedBitmap ->
-            capturedBitmap?.let {
-                bitmap = it
-                imageUri = saveBitmapToCache(context, it) // Simpan ke cache dan dapatkan URI
-            }
-        }
-    )
-
-    // Launcher untuk meminta izin kamera
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (isGranted) {
-                takePictureLauncher.launch()
+                navController.navigate("customCamera")
             } else {
                 Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto", Toast.LENGTH_SHORT).show()
             }
         }
     )
 
+    // Proses gambar saat imageUri berubah
     LaunchedEffect(imageUri) {
         imageUri?.let { uri ->
             isProcessing = true
-            processImage(context, uri) { extractedNik, extractedName,extractedBirthDate, extractedAddress ->
-//                uploadImageToFirebase(context, uri) { imageUrl ->
-//                    navController.navigate("registration_screen?nik=$extractedNik&name=$extractedName&address=$extractedAddress&imageUrl=$imageUrl")
-//                }
-                navController.navigate("registerGrib?nik=$extractedNik&name=$extractedName&address=$extractedAddress&imageUrl=&birthDate=$extractedBirthDate")
-            }
+            val imageBitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            viewModel.scanKTP(
+                bitmap = imageBitmap,
+                onResult = { result ->
+                    isProcessing = false
+                    ktpData = result // Simpan hasil OCR
+                },
+                onError = { error ->
+                    isProcessing = false
+                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                }
+            )
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Tata Cara Upload KTP", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -118,8 +117,34 @@ fun UploadKtpScreen(navController: NavController) {
             Image(
                 painter = rememberAsyncImagePainter(imageUri),
                 contentDescription = "Preview KTP",
-                modifier = Modifier.size(200.dp).clip(RoundedCornerShape(8.dp))
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tampilkan hasil OCR jika ada
+            ktpData?.let { data ->
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text("NIK: ${data.nik}", fontSize = 14.sp)
+                    Text("Nama: ${data.nama}", fontSize = 14.sp)
+                    Text("Tanggal Lahir: ${data.tempatTanggalLahir}", fontSize = 14.sp)
+                    Text("Alamat: ${data.alamat}", fontSize = 14.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        navController.navigate(
+                            "registerGrib?nik=${data.nik}&name=${data.nama}&address=${data.alamat}&imageUrl=$imageUri&birthDate=${data.tempatTanggalLahir}"
+                        )
+                    }
+                ) {
+                    Text("Selanjutnya")
+                }
+            }
         } else {
             Box(
                 modifier = Modifier
@@ -141,7 +166,7 @@ fun UploadKtpScreen(navController: NavController) {
 
             Button(onClick = {
                 if (ContextCompat.checkSelfPermission(context, cameraPermission) == PackageManager.PERMISSION_GRANTED) {
-                    takePictureLauncher.launch()
+                    navController.navigate("customCamera")
                 } else {
                     permissionLauncher.launch(cameraPermission)
                 }
@@ -152,29 +177,13 @@ fun UploadKtpScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (imageUri != null && !isProcessing) {
-            Button(
-                onClick = {
-                    isProcessing = true
-                    processImage(context, imageUri!!) { extractedNik, extractedName, extractedBirthDate, extractedAddress ->
-//                        uploadImageToFirebase(
-//                            context,
-//                            imageUri = imageUri!!
-//                        ) { imageUrl ->
-//                            navController.navigate("registration_screen?nik=$extractedNik&name=$extractedName&address=$extractedAddress&imageUrl=$imageUrl")
-//                        }
-
-                        navController.navigate("registerGrib?nik=$extractedNik&name=$extractedName&address=$extractedAddress&imageUrl=&birthDate=$extractedBirthDate")
-                    }
-                }
-            ) {
-                Text("Lanjutkan ke Registrasi")
-            }
+        if (isProcessing) {
+            Text("Memproses KTP...", fontSize = 14.sp, color = Color.Gray)
         }
     }
 }
 
-private fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri {
+fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri {
     val file = File(context.cacheDir, "ktp_image.jpg")
     file.outputStream().use { out ->
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
@@ -202,77 +211,5 @@ private fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri {
 //        }
 //}
 
-private fun processImage(context: Context, imageUri: Uri, onExtracted: (String, String, String, String) -> Unit) {
-    try {
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val image = InputImage.fromFilePath(context, imageUri)
 
-        recognizer.process(image)
-            .addOnSuccessListener { visionText ->
-                val rawText = visionText.text
-                Log.d("MLKit", "Hasil OCR:\n$rawText") // ✅ Debug: Menampilkan hasil OCR
-
-                val extractedData = extractData(rawText)
-
-                val nik = extractedData.getOrNull(0) ?: "NIK tidak ditemukan"
-                val name = extractedData.getOrNull(1) ?: "Nama tidak ditemukan"
-                val birthDate = extractedData.getOrNull(2) ?: "Tanggal lahir tidak ditemukan"
-                val address = extractedData.getOrNull(3) ?: "Alamat tidak ditemukan"
-
-                Log.d("MLKit", "NIK: $nik, Nama: $name, Alamat: $address, Birthday: $birthDate") // ✅ Debug hasil ekstraksi
-
-                // 🔹 Pastikan dijalankan di thread utama agar UI diperbarui
-                Handler(Looper.getMainLooper()).post {
-                    onExtracted(nik, name, birthDate, address)
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("MLKit", "Gagal mengenali teks", e)
-            }
-    } catch (e: IOException) {
-        e.printStackTrace()
-    }
-}
-
-
-
-private fun extractData(text: String): List<String> {
-    val lines = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-
-    val labels = mutableListOf<String>()
-    val values = mutableListOf<String>()
-
-    var isCapturingValues = false
-
-    for (line in lines) {
-        if (":" in line) {
-            values.add(line.substringAfter(":").trim()) // Simpan sebagai nilai
-            isCapturingValues = true
-        } else {
-            if (!isCapturingValues) {
-                labels.add(line) // Simpan sebagai label
-            } else {
-                values.add(line) // Simpan sebagai nilai tambahan
-            }
-        }
-    }
-
-
-    // **Step 2: Ambil Data**
-    val nik = values.getOrNull(0) ?: "NIK tidak ditemukan"
-    val nama = values.getOrNull(1) ?: "Nama tidak ditemukan"
-    val birthDate = values.getOrNull(2) ?: "Tanggal lahir tidak ditemukan"
-
-    // **Ambil alamat dari index 4 hingga 6 jika ada**
-    val alamat = values.getOrNull(4) ?: "Alamat tidak ditemukan"
-
-    // **Tambahkan RT/RW jika ada**
-    val rtRw = values.getOrNull(5)?.let { " RT/RW $it" } ?: ""
-
-    return listOf(
-        nik,
-        nama,
-        birthDate,
-        alamat + rtRw
-    )
-}
+//https://scanktp-4utu2r7iya-uc.a.run.app

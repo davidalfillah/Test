@@ -1,31 +1,38 @@
 package com.example.test.ui.viewModels
 
+import android.graphics.Bitmap
+import android.util.Base64
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.test.ui.dataType.Address
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.BranchLevel
 import com.example.test.ui.dataType.BranchLocation
 import com.example.test.ui.dataType.Member
-import com.example.test.ui.dataType.Umkm
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FieldValue
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import kotlinx.coroutines.launch
+import com.google.firebase.functions.FirebaseFunctions
+import java.io.ByteArrayOutputStream
 
 open class MemberViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     open fun fetchMember(userId: String, onResult: (Member?, Branch?) -> Unit) {
         val db = FirebaseFirestore.getInstance()
 
         db.collection("members")
-            .whereEqualTo("userId", userId) // ✅ Cari berdasarkan field userId di dalam koleksi "members"
+            .whereEqualTo(
+                "userId",
+                userId
+            ) // ✅ Cari berdasarkan field userId di dalam koleksi "members"
             .limit(1) // 🔹 Hanya ambil satu data (userId unik)
             .get()
             .addOnSuccessListener { documents ->
-                val memberDoc = documents.documents.firstOrNull() // ✅ Ambil dokumen pertama jika ada
+                val memberDoc =
+                    documents.documents.firstOrNull() // ✅ Ambil dokumen pertama jika ada
 
                 if (memberDoc != null) {
                     val member = memberDoc.toObject(Member::class.java)
@@ -39,7 +46,10 @@ open class MemberViewModel : ViewModel() {
                                 onResult(member, branch) // ✅ Callback dengan member & branch
                             }
                             .addOnFailureListener {
-                                onResult(member, null) // ❌ Jika gagal mengambil branch, tetap kirim member
+                                onResult(
+                                    member,
+                                    null
+                                ) // ❌ Jika gagal mengambil branch, tetap kirim member
                             }
                     } else {
                         onResult(member, null) // 🔹 Jika member tidak punya branch
@@ -52,7 +62,6 @@ open class MemberViewModel : ViewModel() {
                 onResult(null, null) // ❌ Jika query gagal, kembalikan null
             }
     }
-
 
 
     fun registerMember(
@@ -88,7 +97,14 @@ open class MemberViewModel : ViewModel() {
                             religion = religion,
                             education = education,
                             phone = phone,
-                            address = Address(street, village, subDistrict, city, province, postalCode),
+                            address = Address(
+                                street,
+                                village,
+                                subDistrict,
+                                city,
+                                province,
+                                postalCode
+                            ),
                             branchId = branchId,
                             branchLevel = branchLevel,
                             job = job,
@@ -142,7 +158,10 @@ open class MemberViewModel : ViewModel() {
             db.collection("umkm").document(umkmId).set(newUmkm)
                 .addOnSuccessListener {
                     db.collection("members").document(memberId)
-                        .update("umkmIds", com.google.firebase.firestore.FieldValue.arrayUnion(umkmId))
+                        .update(
+                            "umkmIds",
+                            com.google.firebase.firestore.FieldValue.arrayUnion(umkmId)
+                        )
                         .addOnSuccessListener { onResult(true, "UMKM berhasil didaftarkan!") }
                         .addOnFailureListener { onResult(false, "Gagal memperbarui data member!") }
                 }
@@ -155,7 +174,8 @@ open class MemberViewModel : ViewModel() {
         val prefix = "GUMKM"
         val dbRef = db.collection("umkm")
 
-        dbRef.orderBy("umkmId", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(1).get()
+        dbRef.orderBy("umkmId", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(1)
+            .get()
             .addOnSuccessListener { documents ->
                 val lastId = if (!documents.isEmpty) {
                     val lastUmkmId = documents.documents[0].getString("umkmId") ?: ""
@@ -189,9 +209,6 @@ open class MemberViewModel : ViewModel() {
     }
 
 
-
-
-
     private fun generateMemberId(callback: (String) -> Unit) {
         val db = FirebaseFirestore.getInstance()
 
@@ -199,7 +216,8 @@ open class MemberViewModel : ViewModel() {
             .addOnSuccessListener { documents ->
                 val lastId = if (!documents.isEmpty) {
                     val lastMember = documents.documents[0]
-                    val lastNumber = lastMember.getString("memberId")?.removePrefix("GRIB")?.toIntOrNull() ?: 0
+                    val lastNumber =
+                        lastMember.getString("memberId")?.removePrefix("GRIB")?.toIntOrNull() ?: 0
                     lastNumber + 1
                 } else {
                     1
@@ -212,7 +230,6 @@ open class MemberViewModel : ViewModel() {
     }
 
 
-
     private fun findOrCreateBranchHierarchy(
         subDistrict: String, city: String, province: String,
         callback: (String, BranchLevel) -> Unit
@@ -222,22 +239,48 @@ open class MemberViewModel : ViewModel() {
         // 1️⃣ Cari atau buat DPP (Pusat)
         db.collection("branches").whereEqualTo("level", "DPP").get()
             .addOnSuccessListener { dppDocs ->
-                val dppId = if (!dppDocs.isEmpty) dppDocs.documents[0].id else createBranch("DPP", "Pusat", BranchLocation(), BranchLevel.DPP)
+                val dppId = if (!dppDocs.isEmpty) dppDocs.documents[0].id else createBranch(
+                    "DPP",
+                    "Pusat",
+                    BranchLocation(),
+                    BranchLevel.DPP
+                )
 
                 // 2️⃣ Cari atau buat DPD (Provinsi)
-                db.collection("branches").whereEqualTo("location.province", province).whereEqualTo("level", "DPD").get()
+                db.collection("branches").whereEqualTo("location.province", province)
+                    .whereEqualTo("level", "DPD").get()
                     .addOnSuccessListener { dpdDocs ->
-                        val dpdId = if (!dpdDocs.isEmpty) dpdDocs.documents[0].id else createBranch(dppId, province, BranchLocation(province = province), BranchLevel.DPD)
+                        val dpdId = if (!dpdDocs.isEmpty) dpdDocs.documents[0].id else createBranch(
+                            dppId,
+                            province,
+                            BranchLocation(province = province),
+                            BranchLevel.DPD
+                        )
 
                         // 3️⃣ Cari atau buat DPC (Kabupaten/Kota)
-                        db.collection("branches").whereEqualTo("location.city", city).whereEqualTo("level", "DPC").get()
+                        db.collection("branches").whereEqualTo("location.city", city)
+                            .whereEqualTo("level", "DPC").get()
                             .addOnSuccessListener { dpcDocs ->
-                                val dpcId = if (!dpcDocs.isEmpty) dpcDocs.documents[0].id else createBranch(dpdId, city, BranchLocation(city = city, province = province), BranchLevel.DPC)
+                                val dpcId =
+                                    if (!dpcDocs.isEmpty) dpcDocs.documents[0].id else createBranch(
+                                        dpdId,
+                                        city,
+                                        BranchLocation(city = city, province = province),
+                                        BranchLevel.DPC
+                                    )
 
                                 // 4️⃣ Cari atau buat PAC (Kecamatan)
-                                db.collection("branches").whereEqualTo("location.subDistrict", subDistrict).whereEqualTo("level", "PAC").get()
+                                db.collection("branches")
+                                    .whereEqualTo("location.subDistrict", subDistrict)
+                                    .whereEqualTo("level", "PAC").get()
                                     .addOnSuccessListener { pacDocs ->
-                                        val pacId = if (!pacDocs.isEmpty) pacDocs.documents[0].id else createBranch(dpcId, subDistrict, BranchLocation(subDistrict, city, province), BranchLevel.PAC)
+                                        val pacId =
+                                            if (!pacDocs.isEmpty) pacDocs.documents[0].id else createBranch(
+                                                dpcId,
+                                                subDistrict,
+                                                BranchLocation(subDistrict, city, province),
+                                                BranchLevel.PAC
+                                            )
 
                                         // Callback dengan PAC yang ditemukan/dibuat
                                         callback(pacId, BranchLevel.PAC)
@@ -266,5 +309,82 @@ open class MemberViewModel : ViewModel() {
     }
 
 
+    private val functions = FirebaseFunctions.getInstance()
+
+    data class KTPData(
+        val nik: String = "",
+        val nama: String = "",
+        val tempatTanggalLahir: String = "",
+        val jenisKelamin: String = "",
+        val alamat: String = ""
+    )
+
+    fun scanKTP(
+        bitmap: Bitmap,
+        onResult: (KTPData) -> Unit, // Callback untuk hasil sukses
+        onError: (String) -> Unit    // Callback untuk error
+    ) {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            Log.e("KTP", "No authenticated user found")
+            onError("Pengguna belum login. Silakan login terlebih dahulu.")
+            return
+        }
+
+        // Log informasi pengguna dan token
+        user.getIdToken(false).addOnSuccessListener { result ->
+            Log.d("KTP", "User UID: ${user.uid}, Token: ${result.token}")
+        }.addOnFailureListener { e ->
+            Log.e("KTP", "Failed to get token: ${e.message}")
+        }
+
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        val bitmapIt = scaleBitmapDown(bitmap, 640)
+        bitmapIt.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+        val imageBytes = byteArrayOutputStream.toByteArray()
+        val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+        Log.d("KTP", "Base64 length: ${base64Image.length}")
+
+        val data = hashMapOf("image" to base64Image)
+        Log.d("KTP", "Sending data keys: ${data.keys}, image length: ${data["image"]?.length}")
+
+        functions
+            .getHttpsCallable("scanKTP")
+            .call(data)
+            .addOnSuccessListener { result ->
+                val resultData = result.data as? Map<*, *>
+                val ktpData = KTPData(
+                    nik = resultData?.get("nik") as? String ?: "",
+                    nama = resultData?.get("nama") as? String ?: "",
+                    tempatTanggalLahir = resultData?.get("tempatTanggalLahir") as? String ?: "",
+                    jenisKelamin = resultData?.get("jenisKelamin") as? String ?: "",
+                    alamat = resultData?.get("alamat") as? String ?: ""
+                )
+                onResult(ktpData)
+            }
+            .addOnFailureListener { e ->
+                Log.e("KTP", "Function call failed: ${e.message}")
+                onError("Error: ${e.message}")
+            }
+    }
 }
 
+private fun scaleBitmapDown(bitmap: Bitmap, maxDimension: Int): Bitmap {
+    val originalWidth = bitmap.width
+    val originalHeight = bitmap.height
+    var resizedWidth = maxDimension
+    var resizedHeight = maxDimension
+    if (originalHeight > originalWidth) {
+        resizedHeight = maxDimension
+        resizedWidth =
+            (resizedHeight * originalWidth.toFloat() / originalHeight.toFloat()).toInt()
+    } else if (originalWidth > originalHeight) {
+        resizedWidth = maxDimension
+        resizedHeight =
+            (resizedWidth * originalHeight.toFloat() / originalWidth.toFloat()).toInt()
+    } else if (originalHeight == originalWidth) {
+        resizedHeight = maxDimension
+        resizedWidth = maxDimension
+    }
+    return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false)
+}

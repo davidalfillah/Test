@@ -13,6 +13,10 @@ emoji2Emojipicker = "1.5.0"
 firebaseStorageKtx = "21.0.1"
 foundationAndroid = "1.7.6"
 firebaseFunctionsKtx = "21.1.1"
+firebaseAppcheckDebug = "18.0.0"
+cameraCore = "1.4.1"
+cameraView = "1.4.1"
+cameraLifecycle = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +38,10 @@ androidx-emoji2-emojipicker = { group = "androidx.emoji2", name = "emoji2-emojip
 firebase-storage-ktx = { group = "com.google.firebase", name = "firebase-storage-ktx", version.ref = "firebaseStorageKtx" }
 androidx-foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
 firebase-functions-ktx = { group = "com.google.firebase", name = "firebase-functions-ktx", version.ref = "firebaseFunctionsKtx" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "firebaseAppcheckDebug" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -72,7 +72,6 @@ fun SlideComponentNews(
                 Card(
                     elevation = CardDefaults.cardElevation(2.dp),
                     modifier = Modifier
-                        .height(175.dp)
                         .width(250.dp)
                         .clickable { onItemClick(item.articleId) },
                     colors = CardDefaults.cardColors(
@@ -91,7 +90,7 @@ fun SlideComponentNews(
                         )
 
                         // Konten Berita
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             Text(
                                 text = item.title,
                                 fontSize = 14.sp,
@@ -101,6 +100,13 @@ fun SlideComponentNews(
                                 maxLines = 2, // Maksimal 2 baris
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(item.pubDate, fontSize = 12.sp, color = Color.Gray)
+                                Text(item.sourceName, fontSize = 12.sp, color = Color.Gray)
+                            }
                         }
                     }
                 }

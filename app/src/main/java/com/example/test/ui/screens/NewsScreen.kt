@@ -1,5 +1,6 @@
 package com.example.test.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,16 +19,33 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import com.example.test.ui.components.ListComponentNews
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
+import com.example.test.ui.viewModels.Ad
+import com.example.test.ui.viewModels.AdViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues) {
+fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, ) {
+    val ads = remember { mutableStateOf(emptyList<Ad>()) }
+    val isLoading = remember { mutableStateOf(true) } // Status loading
+    val adViewModel = AdViewModel()
+
+    LaunchedEffect(Unit) {
+        adViewModel.getAds { fetchedAds ->
+            ads.value = fetchedAds
+            isLoading.value = false // Matikan loading setelah data diambil
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -66,6 +84,11 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues) {
                 .verticalScroll(rememberScrollState())
         ) {
             Column() {
+                SlideComponentBanner(items = ads.value,
+                    isLoading = isLoading.value,
+                    onItemClick = { actionValue ->
+                        Log.d("Banner Clicked", "Aksi: $actionValue")
+                    })
                 SlideComponentNews(
                     items = NewsData.newsList,
                     onItemClick = { menu ->
@@ -73,21 +96,7 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues) {
                     },
                     navController = navController
                 )
-//                SlideComponentBanner(
-//                    items = banners.shuffled().take(3),
-//                    onItemClick = { menu ->
-//                        println("Menu yang diklik: $menu")
-//                    },
-//                    scrollInterval = 6000L
-//                )
-                SlideComponentNews(
-                    items = NewsData.newsList,
-                    onItemClick = { menu ->
-                        navController.navigate("news_detail/$menu")
-                    },
-                    navController = navController
-                )
-                SlideComponentNews(
+                ListComponentNews(
                     items = NewsData.newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
@@ -108,7 +117,19 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues) {
                     },
                     navController = navController
                 )
-                SlideComponentNews(
+                ListComponentNews(
+                    items = NewsData.newsList,
+                    onItemClick = { menu ->
+                        navController.navigate("news_detail/$menu")
+                    },
+                    navController = navController
+                )
+                SlideComponentBanner(items = ads.value,
+                    isLoading = isLoading.value,
+                    onItemClick = { actionValue ->
+                        Log.d("Banner Clicked", "Aksi: $actionValue")
+                    })
+                ListComponentNews(
                     items = NewsData.newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")

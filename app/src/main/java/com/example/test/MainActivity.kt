@@ -45,6 +45,9 @@ import com.example.test.ui.screens.User
 import com.example.test.ui.theme.TestTheme
 import com.google.firebase.FirebaseException
 import com.google.firebase.Timestamp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.PhoneAuthCredential
@@ -503,21 +506,15 @@ class AuthViewModelFactory(private val authRepository: AuthRepository) : ViewMod
 class MainActivity : ComponentActivity() {
     private lateinit var authViewModel: AuthViewModel
 
-    companion object {
-
-        private const val TAG = "EmojiCompatApplication"
-
-        /** Change this to `false` when you want to use the downloadable Emoji font.  */
-        private const val USE_BUNDLED_EMOJI = true
-
-    }
-
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
-        // 🔥 Pastikan hanya dijalankan sekali sebelum Firebase digunakan
         try {
             FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+//            val firebaseAppCheck = FirebaseAppCheck.getInstance()
+//            firebaseAppCheck.installAppCheckProviderFactory(
+//                DebugAppCheckProviderFactory.getInstance()
+//            )
         } catch (e: DatabaseException) {
             Log.e("Firebase", "Persistence sudah diaktifkan sebelumnya")
         }
@@ -532,10 +529,7 @@ class MainActivity : ComponentActivity() {
         val config = FontRequestEmojiCompatConfig(applicationContext, fontRequest)
         EmojiCompat.init(config)
 
-        // ✅ Inisialisasi Repository
         val authRepository = AuthRepository()
-
-        // ✅ Gunakan ViewModelProvider dengan Factory
         authViewModel = ViewModelProvider(
             this,
             AuthViewModelFactory(authRepository)

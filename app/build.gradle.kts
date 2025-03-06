@@ -58,6 +58,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation(libs.androidx.emoji2.bundled)
     implementation(libs.androidx.emoji2.emojipicker)
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
@@ -87,6 +88,16 @@ dependencies {
     implementation(libs.firebase.storage.ktx)
     implementation(libs.androidx.foundation.android)
     implementation(libs.firebase.functions.ktx)
+    implementation(libs.firebase.appcheck.debug)
+
+    val camerax_version = "1.1.0-beta01"
+    implementation ("androidx.camera:camera-core:${camerax_version}")
+    implementation ("androidx.camera:camera-camera2:${camerax_version}")
+    implementation ("androidx.camera:camera-lifecycle:${camerax_version}")
+    implementation ("androidx.camera:camera-video:${camerax_version}")
+
+    implementation ("androidx.camera:camera-view:${camerax_version}")
+    implementation ("androidx.camera:camera-extensions:${camerax_version}")
 
     val emoji2_version = "1.5.0"
     implementation("androidx.emoji2:emoji2:$emoji2_version")
