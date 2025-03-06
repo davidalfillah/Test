@@ -90,6 +90,11 @@ fun RegistrationScreen(
     val context = LocalContext.current
     Log.d("BirthDate", birthDate)
 
+    var nik1 by remember { mutableStateOf(nik) }
+    var fullName1 by remember { mutableStateOf(fullName) }
+    var street1 by remember { mutableStateOf(street) }
+    var imageUrl1 by remember { mutableStateOf(imageUrl) }
+    var birthDate1 by remember { mutableStateOf(birthDate) }
     var gender by remember { mutableStateOf("") }
     var religion by remember { mutableStateOf("") }
     var education by remember { mutableStateOf("") }
@@ -165,15 +170,15 @@ fun RegistrationScreen(
                     label = "NIK",
                     placeholder = "Masukkan NIK",
                     selectedOption = nik,
-                    onValueChange = {  }
+                    onValueChange = { nik1 = it }
                 )
 
                 CustomInputField(
                     type = InputType.TEXT,
                     label = "Nama Lengkap",
                     placeholder = "Masukkan Nama",
-                    selectedOption = fullName,
-                    onValueChange = {  }
+                    selectedOption = fullName1,
+                    onValueChange = { fullName1 = it }
                 )
 
 
@@ -228,7 +233,7 @@ fun RegistrationScreen(
                     label = "Alamat",
                     placeholder = "Masukkan Alamat",
                     selectedOption = street,
-                    onValueChange = {  }
+                    onValueChange = {street1=it  }
                 )
 
                 AddressInputField(
