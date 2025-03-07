@@ -7,13 +7,37 @@ Aplikasi Android ini dikembangkan untuk **Organisasi Masyarakat GRIB (Gerakan Ra
 
 ---
 
-## 📷 Screenshot Aplikasi
+## 📸 Screenshot Aplikasi
 
-| Beranda | Menu Pembayaran | Form Donasi |
-|---------|---------------|-------------|
-| ![Screenshot 1](screenshots/screenshot1.png) | ![Screenshot 2](screenshots/screenshot2.png) | ![Screenshot 3](screenshots/screenshot3.png) |
+### **Sebelum Login**
+- ![Splash Screen](screenshots/Screenshot_20250307_210611.png)
+- ![Home](screenshots/Screenshot_20250307_210641.png)
+- ![Marketplace](screenshots/Screenshot_20250307_210658.png)
+- ![Chat](screenshots/Screenshot_20250307_210715.png)
+- ![Akun](screenshots/Screenshot_20250307_210725.png)
 
----
+### **Proses Login**
+- ![Input No HP](screenshots/Screenshot_20250307_210737.png)
+- ![Input OTP](screenshots/Screenshot_20250307_210756.png)
+- ![Status Sukses Login](screenshots/Screenshot_20250307_210845.png)
+
+### **Setelah Login**
+- ![Home](screenshots/Screenshot_20250307_210855.png)
+- ![Marketplace](screenshots/Screenshot_20250307_210658.png)
+- ![Chat](screenshots/Screenshot_20250307_211133.png)
+- ![Akun](screenshots/Screenshot_20250307_211142.png)
+- ![News](screenshots/Screenshot_20250307_210907.png)
+- ![News Detail](screenshots/Screenshot_20250307_210920.png)
+- ![Register UMKM](screenshots/Screenshot_20250307_210934.png)
+- ![KTA](screenshots/Screenshot_20250307_210946.png)
+- ![Biodata Member](screenshots/Screenshot_20250307_210956.png)
+- ![Kartu Anggota Digital](screenshots/Screenshot_20250307_211008.png)
+- ![Donasi](screenshots/Screenshot_20250307_211024.png)
+- ![Donasi Detail](screenshots/Screenshot_20250307_211033.png)
+- ![Input Donasi](screenshots/Screenshot_20250307_211042.png)
+- ![Tentang Hello GRIB](screenshots/Screenshot_20250307_211106.png)
+- ![Pengurus Pusat](screenshots/Screenshot_20250307_211115.png)
+- ![Ajak teman](screenshots/Screenshot_20250307_211155.png)
 
 ## 📥 Unduh Aplikasi Debug
 Anda dapat mengunduh dan menguji aplikasi versi debug melalui tautan berikut:
