@@ -64,7 +64,6 @@ import com.example.test.ui.components.CustomInputField
 import com.example.test.ui.components.InputType
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
-import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.cities
 import com.example.test.ui.dataTest.provinces

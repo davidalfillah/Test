@@ -1,9 +1,8 @@
 package com.example.test.ui.dataType
 
-import androidx.annotation.Keep
 import com.example.test.ui.screens.User
 import com.google.firebase.Timestamp
-import java.sql.Time
+import com.google.firebase.firestore.PropertyName
 
 data class Chat(
     val chatId: String = "",
@@ -64,28 +63,28 @@ data class Member(
     val jobTitle: String = "Anggota",
     val status: String = "active",
     val createdAt: Timestamp = Timestamp.now(),
-    val umkmIds: List<String> = emptyList(), // List ID UMKM yang dimiliki oleh anggota
+    val umkmIds: List<String> = emptyList(),
 )
 
 data class Umkm(
-    val umkmId: String = "",  // ID unik untuk UMKM
-    val ownerId: String = "", // ID anggota yang memiliki UMKM (memberId)
-    val name: String = "", // Nama UMKM
-    val businessType: String = "", // Jenis usaha (contoh: Kuliner, Fashion, dll.)
-    val description: String = "", // Deskripsi usaha
-    val address: Address = Address(), // Alamat UMKM
-    val contact: String = "", // Kontak UMKM (Nomor HP / Email)
-    val registrationDate: Long = System.currentTimeMillis(), // Tanggal pendaftaran
-    val status: String = "active" // Status usaha (active, inactive)
+    val umkmId: String = "",
+    val ownerId: String = "",
+    val name: String = "",
+    val businessType: String = "",
+    val description: String = "",
+    val address: Address = Address(),
+    val contact: String = "",
+    val registrationDate: Long = System.currentTimeMillis(),
+    val status: String = "active"
 )
 
 
 
 enum class BranchLevel {
-    PAC, // Pimpinan Anak Cabang (Kecamatan)
-    DPC, // Dewan Pimpinan Cabang (Kabupaten/Kota)
-    DPD, // Dewan Pimpinan Daerah (Provinsi)
-    DPP  // Dewan Pimpinan Pusat
+    PAC,
+    DPC,
+    DPD,
+    DPP
 }
 
 data class Branch(
@@ -93,15 +92,55 @@ data class Branch(
     val branchId: String = "",
     val name: String = "",
     val location: BranchLocation = BranchLocation(),
-    val level: BranchLevel = BranchLevel.PAC, // Default PAC (Kecamatan)
-    val leaderId: String? = null,  // ID anggota yang menjadi ketua cabang
-    val members: List<String> = emptyList()  // List ID anggota dalam cabang
+    val level: BranchLevel = BranchLevel.PAC,
+    val leaderId: String? = null,
+    val members: List<String> = emptyList()
 )
 
 data class BranchLocation(
-    val subDistrict: String = "", // Kecamatan (PAC)
-    val city: String = "", // Kabupaten/Kota (DPC)
-    val province: String = "" // Provinsi (DPD)
+    val subDistrict: String = "",
+    val city: String = "",
+    val province: String = ""
+)
+
+data class News(
+    val id: String = "",
+    val title: String = "",
+    val category: String = "",
+    val content: List<NewsContent> = emptyList(), // Menggunakan NewsContent
+    val thumbnailUrl: String = "",
+    val author: User = User(),
+    val createdAt: Timestamp? = null,
+    val updatedAt: Timestamp? = null,
+    val isFeatured: Boolean = false,
+    val viewCount: Int = 0,
+    val likes: Map<String, Boolean> = emptyMap(),
+    val comments: List<String> = emptyList(),
+    val shares: Int = 0
+)
+
+
+data class NewsContent(
+    val text: String? = null,           // Untuk konten teks
+    val imageUrl: String? = null,       // Untuk konten gambar
+    val videoUrl: String? = null,       // Untuk konten video
+    val videoThumbnailUrl: String? = null, // Thumbnail untuk video
+    val caption: String? = null,        // Keterangan untuk gambar/video
+    val articleUrl: String? = null,     // Untuk tautan artikel
+    val articleTitle: String? = null    // Judul untuk tautan artikel
+)
+
+data class Comment(
+    val id: String = "",
+    val userId: String = "",
+    val text: String = "",
+    val createdAt: Timestamp? = null
+)
+
+data class Bookmark(
+    val userId: String = "",
+    val newsId: String = "",
+    val createdAt: Timestamp = Timestamp.now()
 )
 
 

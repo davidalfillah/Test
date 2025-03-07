@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.R
-import com.example.test.ui.dataTest.NewsArticle
+import com.example.test.ui.dataType.News
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 import kotlinx.coroutines.delay
@@ -44,7 +44,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalSnapperApi::class)
 @Composable
 fun SlideComponentNews(
-    items: List<NewsArticle>, // List berisi pasangan ikon & teks
+    items: List<News>, // List berisi pasangan ikon & teks
     onItemClick: (String) -> Unit,
     navController:NavHostController
 ) {
@@ -84,7 +84,7 @@ fun SlideComponentNews(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     modifier = Modifier
                         .width(300.dp)
-                        .clickable { onItemClick(item.articleId) },
+                        .clickable { onItemClick(item.id) },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                         contentColor = MaterialTheme.colorScheme.onSurface
@@ -92,7 +92,7 @@ fun SlideComponentNews(
                 ){
                     Column {
                         AsyncImage(
-                            model = item.imageUrl,
+                            model = item.thumbnailUrl,
                             contentDescription = item.title,
                             contentScale = ContentScale.Crop, // Gambar diisi penuh & dipotong jika perlu
                             modifier = Modifier
@@ -115,12 +115,12 @@ fun SlideComponentNews(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    item.sourceName,
+                                    item.author.name,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    item.pubDate,
+                                    formatTimeAgo(item.createdAt),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

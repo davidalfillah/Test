@@ -40,7 +40,6 @@ import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.R
 import com.example.test.ui.dataTest.CategoryButton
-import com.example.test.ui.dataTest.NewsArticle
 import com.example.test.ui.screens.Product
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import dev.chrisbanes.snapper.rememberSnapperFlingBehavior

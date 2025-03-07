@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,18 +36,20 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.R
-import com.example.test.ui.dataTest.NewsArticle
+import com.example.test.ui.dataType.News
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 
 @OptIn(ExperimentalSnapperApi::class)
 @Composable
 fun ListComponentNews(
-    items: List<NewsArticle>, // List berisi pasangan ikon & teks
+    items: List<News>, // List berisi pasangan ikon & teks
     onItemClick: (String) -> Unit,
     navController: NavHostController
 ) {
     val lazyListState = rememberLazyListState()
+
+
 
     Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
@@ -76,7 +79,7 @@ fun ListComponentNews(
             items.forEach() { item ->
                 Row(
                     modifier = Modifier
-                        .clickable { onItemClick(item.articleId) }
+                        .clickable { onItemClick(item.id) }
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -96,13 +99,13 @@ fun ListComponentNews(
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
                             Text(
-                                item.sourceName,
+                                item.author.name,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                item.pubDate,
+                                formatTimeAgo(item.createdAt),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -112,7 +115,7 @@ fun ListComponentNews(
                     Spacer(modifier = Modifier.width(16.dp))
 
                     AsyncImage(
-                        model = item.imageUrl,
+                        model = item.thumbnailUrl,
                         contentDescription = item.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier

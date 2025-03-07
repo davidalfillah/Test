@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil3.compose.rememberAsyncImagePainter
 import com.example.test.AuthViewModel
@@ -68,11 +69,14 @@ import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.components.UserProfileImage
-import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.products
+import com.example.test.ui.dataType.News
+import com.example.test.ui.dataType.NewsContent
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
+import com.example.test.ui.viewModels.NewsViewModel
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 
 
 data class Product(
@@ -100,13 +104,14 @@ fun HomeScreen(
     navController: NavHostController, paddingValues: PaddingValues, authViewModel: AuthViewModel
 ) {
     val ads = remember { mutableStateOf(emptyList<Ad>()) }
-    val isLoading = remember { mutableStateOf(true) } // Status loading
+    var newsList by remember { mutableStateOf<List<News>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     val user by authViewModel.user.collectAsState()
     val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
     val adViewModel = AdViewModel()
+    val newsViewModel: NewsViewModel = viewModel()
 
-    val sheetState = rememberModalBottomSheetState()
-    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(user, isProfileComplete) {
@@ -116,13 +121,26 @@ fun HomeScreen(
                 popUpTo("home") { inclusive = true }
             }
         }
+
     }
 
     LaunchedEffect(Unit) {
         adViewModel.getAds { fetchedAds ->
             ads.value = fetchedAds
-            isLoading.value = false // Matikan loading setelah data diambil
+            isLoading = false // Matikan loading setelah data diambil
         }
+        newsViewModel.fetchNews(
+            onLoading = { isLoading = true },
+            onSuccess = { fetchedNews ->
+                newsList = fetchedNews
+                isLoading = false
+                error = null
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+                isLoading = false
+            }
+        )
     }
 
     Scaffold(topBar = {
@@ -416,6 +434,55 @@ fun HomeScreen(
                         }
                     }
                 }
+//                Button(
+//                    onClick = {
+//                        val user = FirebaseAuth.getInstance().currentUser
+//                        val sampleNews = News(
+//                            title = "Berita Contoh ${System.currentTimeMillis()}",
+//                            category = "Umum",
+//                            content = listOf(
+//                                // Konten Teks
+//                                NewsContent(
+//                                    text = "Ini adalah konten teks dalam berita percobaan."
+//                                ),
+//                                // Konten Gambar
+//                                NewsContent(
+//                                    imageUrl = "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0",
+//                                    caption = "Gambar pemandangan indah"
+//                                ),
+//                                // Konten Video
+//                                NewsContent(
+//                                    videoUrl = "https://www.example.com/sample-video.mp4",
+//                                    videoThumbnailUrl = "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+//                                    caption = "Video contoh Rickroll"
+//                                ),
+//                                // Konten Tautan Artikel
+//                                NewsContent(
+//                                    articleUrl = "https://www.example.com/article",
+//                                    articleTitle = "Artikel Menarik Tentang Teknologi"
+//                                )
+//                            ),
+//                            thumbnailUrl = "https://images.unsplash.com/photo-1519125323398-675f398f6978",
+//                            author = User(
+//                                uid = user?.uid ?: "anonymous",
+//                                name = "Penulis Percobaan"
+//                            )
+//                        )
+//                        newsViewModel.addNews(
+//                            news = sampleNews,
+//                            onSuccess = {
+//                                Log.d("NewsViewModel", "Berita berhasil ditambahkan")
+//                            },
+//                            onError = { errorMsg ->
+//                                error = errorMsg
+//                            }
+//                        )
+//                    },
+//                    modifier = Modifier
+//                        .padding(16.dp)
+//                ) {
+//                    Text("Tambah Berita Contoh")
+//                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -478,14 +545,14 @@ fun HomeScreen(
                     }
                 }
                 SlideComponentBanner(items = ads.value,
-                    isLoading = isLoading.value,
+                    isLoading = isLoading,
                     onItemClick = { actionValue ->
                         Log.d("Banner Clicked", "Aksi: $actionValue")
                     })
 
                 PublicComplaints()
                 SlideComponentNews(
-                    items = NewsData.newsList, onItemClick = { menu ->
+                    items = newsList, onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     }, navController = navController
                 )

@@ -20,29 +20,59 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.test.ui.components.ListComponentNews
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
-import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
+import com.example.test.ui.dataType.News
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
+import com.example.test.ui.viewModels.NewsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, ) {
     val ads = remember { mutableStateOf(emptyList<Ad>()) }
-    val isLoading = remember { mutableStateOf(true) } // Status loading
+
+    var newsList by remember { mutableStateOf<List<News>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     val adViewModel = AdViewModel()
+    val newsViewModel: NewsViewModel = viewModel()
+
+    var error by remember { mutableStateOf<String?>(null) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         adViewModel.getAds { fetchedAds ->
             ads.value = fetchedAds
-            isLoading.value = false // Matikan loading setelah data diambil
+            isLoading = false // Matikan loading setelah data diambil
+        }
+        newsViewModel.fetchNews(
+            onLoading = { isLoading = true },
+            onSuccess = { fetchedNews ->
+                newsList = fetchedNews
+                isLoading = false
+                error = null
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+                isLoading = false
+            }
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        adViewModel.getAds { fetchedAds ->
+            ads.value = fetchedAds
+            isLoading = false // Matikan loading setelah data diambil
         }
     }
 
@@ -85,52 +115,52 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
         ) {
             Column() {
                 SlideComponentBanner(items = ads.value,
-                    isLoading = isLoading.value,
+                    isLoading = isLoading,
                     onItemClick = { actionValue ->
                         Log.d("Banner Clicked", "Aksi: $actionValue")
                     })
                 SlideComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },
                     navController = navController
                 )
                 ListComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },
                     navController = navController
                 )
                 SlideComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },
                     navController = navController
                 )
                 SlideComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },
                     navController = navController
                 )
                 ListComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },
                     navController = navController
                 )
                 SlideComponentBanner(items = ads.value,
-                    isLoading = isLoading.value,
+                    isLoading = isLoading,
                     onItemClick = { actionValue ->
                         Log.d("Banner Clicked", "Aksi: $actionValue")
                     })
                 ListComponentNews(
-                    items = NewsData.newsList,
+                    items = newsList,
                     onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
                     },

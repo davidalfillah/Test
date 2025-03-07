@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Divider
@@ -63,7 +64,6 @@ import coil3.compose.rememberAsyncImagePainter
 import com.example.test.R
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
-import com.example.test.ui.dataTest.NewsData
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataType.Address
 import com.example.test.ui.dataType.Branch
@@ -112,7 +112,7 @@ fun HomeKtaScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                         )
                     }
