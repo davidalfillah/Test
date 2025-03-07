@@ -25,7 +25,7 @@ Anda dapat mengunduh dan menguji aplikasi versi debug melalui tautan berikut:
 ## 🔑 Informasi Login & OTP Test
 Untuk melakukan pengujian login dengan nomor telepon dan OTP, silakan gunakan detail berikut:
 
-- **Nomor Telepon:** `+6281234567890`
+- **Nomor Telepon:** `+6283822158268`
 - **Kode OTP:** `000000`
 
 ---
@@ -81,8 +81,8 @@ Aplikasi **Hello GRIB** telah memiliki beberapa halaman utama, yaitu:
 ## 📩 Kontak & Kontribusi
 Jika Anda ingin memberikan saran, laporan bug, atau berkontribusi dalam pengembangan aplikasi ini, silakan hubungi:
 
-📧 **Email:** [email@example.com](mailto:email@example.com)  
-📱 **WhatsApp:** +62xxxxxxxxxxx  
+📧 **Email:** [syaifulasifuddin7@gmail.com](mailto:syaifulasifuddin7@gmail.com)  
+📱 **WhatsApp:** +6283822158268
 
 Kami sangat menghargai masukan dan dukungan Anda! 🚀
 
