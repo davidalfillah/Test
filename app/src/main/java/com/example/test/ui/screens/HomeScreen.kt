@@ -1,9 +1,9 @@
 package com.example.test.ui.screens
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,8 +33,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,11 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,9 +62,6 @@ import androidx.navigation.NavHostController
 import coil3.compose.rememberAsyncImagePainter
 import com.example.test.AuthViewModel
 import com.example.test.R
-import com.example.test.ui.components.CardConfig
-import com.example.test.ui.components.CardOrientation
-import com.example.test.ui.components.DynamicCard
 import com.example.test.ui.components.PublicComplaints
 import com.example.test.ui.components.ShareBottomSheet
 import com.example.test.ui.components.SlideComponentBanner
@@ -196,13 +192,12 @@ fun HomeScreen(
                                     ) // Perbaikan: Memberi ruang agar tombol tidak terdesak
                                 ) {
 
-                                    UserProfileImage(user?.profilePicUrl, 64)
+                                    UserProfileImage(user?.profilePicUrl, 48)
 
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = "Hai, ${user?.name}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
+                                        style = MaterialTheme.typography.titleMedium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan teks tidak memakan seluruh ruang
@@ -216,10 +211,10 @@ fun HomeScreen(
                                         showBottomSheet = true
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,  // Warna latar belakang dark
-                                        contentColor = MaterialTheme.colorScheme.primary // Warna teks tetap putih
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                        contentColor = MaterialTheme.colorScheme.primary
                                     ),
-                                    modifier = Modifier.wrapContentWidth() // Perbaikan: Pastikan tombol tidak dipaksa melebar
+                                    modifier = Modifier.wrapContentWidth()
                                 ) {
                                     Text(
                                         text = "Ajak Teman",
@@ -292,16 +287,16 @@ fun HomeScreen(
                     .background(color = MaterialTheme.colorScheme.primary)
             )
             Column(modifier = Modifier.offset(y = (-75).dp)) {
-                Card(
+                OutlinedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    elevation = CardDefaults.elevatedCardElevation(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
-                    )
+                )
 
                 {
                     Column(
@@ -315,9 +310,9 @@ fun HomeScreen(
                                 modifier = Modifier
                                     .padding(top = 16.dp)
                                     .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween // Perbaikan: Ubah dari SpaceBetween ke Start
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically,) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Image(
                                         painter = rememberAsyncImagePainter(model = R.drawable._dicons_dollar_dynamic_color),
                                         contentDescription = "Koin",
@@ -326,17 +321,15 @@ fun HomeScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            text = "Rp.10.000",
+                                            text = "Rp.20.000",
                                             fontWeight = FontWeight.Black,
-                                            fontSize = 24.sp,
-                                            lineHeight = 28.sp,
-                                            color = Color.Black,
+                                            style = MaterialTheme.typography.titleLarge,
                                         )
                                         Text(
                                             text = "Iuran bulan April - 2025",
-                                            fontSize = 12.sp,
+                                            style = MaterialTheme.typography.titleSmall,
                                             lineHeight = 14.sp,
-                                            color = Color.Black.copy(alpha = 0.5f),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
@@ -387,6 +380,7 @@ fun HomeScreen(
                                                         }
                                                     }
                                                 }
+
                                                 3 -> navController.navigate("donations")
                                             }
                                         }) {
@@ -395,11 +389,16 @@ fun HomeScreen(
                                             .size(70.dp)
                                             .padding(2.dp)
                                             .clip(shape = RoundedCornerShape(12.dp))
-                                            .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary.copy(
+                                                    alpha = 0.1f
+                                                )
+                                            ),
 
                                         contentAlignment = Alignment.Center // Memastikan ikon di tengah
                                     ) {
-                                        Image(painter = painterResource(icon),
+                                        Image(
+                                            painter = painterResource(icon),
                                             contentDescription = label,
                                             modifier = Modifier.size(60.dp),
                                         )
@@ -409,8 +408,7 @@ fun HomeScreen(
                                         fontSize = 12.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Black,
+                                        style = MaterialTheme.typography.labelSmall,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
@@ -418,37 +416,63 @@ fun HomeScreen(
                         }
                     }
                 }
-
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        navController.navigate("aboutGrib")
-                    }
-                    .padding(horizontal = 16.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
-                    Row(
+                    OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        ) {
-                        Image(
-                            painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(80.dp)
+                            .clickable {
+                                navController.navigate("aboutGrib")
+                            }.background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                        MaterialTheme.colorScheme.surfaceContainerLowest
+                                    )
+                                ),
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                fontSize = 11.sp,
-                                lineHeight = 13.sp,
-                                text = "GRIB atau Gerakan Rakyat Indonesia Bersatu didirikan oleh Rosario de Marshal, atau populer sebagai Hercules. Hercules adalah mantan gangster dan broker politik asal Timor Timur"
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
+                                contentDescription = "Logo",
+                                modifier = Modifier.size(80.dp)
                             )
-                            Text(
-                                text = "Liat selengkapnya",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black, // Sesuaikan warna teks
-                                modifier = Modifier.padding(top = 4.dp) // Jarak antara ikon dan teks
+                            Column {
+
+                                Text(
+                                    text = "Kamu udah tau apa itu GRIB?",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 13.sp,
+                                    text = "Yuk cari tahu tentang GRIB"
+                                )
+                            }
+                            Image(
+                                painter = painterResource(id = R.drawable.baseline_arrow_forward_ios_24),
+                                contentDescription = "More",
+                                modifier = Modifier
+                                    .size(24.dp),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                             )
                         }
                     }

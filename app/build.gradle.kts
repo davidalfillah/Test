@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.test"
-        minSdk = 24
+        minSdk = 25
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -89,6 +89,14 @@ dependencies {
     implementation(libs.androidx.foundation.android)
     implementation(libs.firebase.functions.ktx)
     implementation(libs.firebase.appcheck.debug)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.compose.material)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.foundation.android)
 
     val camerax_version = "1.1.0-beta01"
     implementation ("androidx.camera:camera-core:${camerax_version}")

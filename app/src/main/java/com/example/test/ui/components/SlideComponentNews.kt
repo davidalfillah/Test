@@ -2,6 +2,7 @@ package com.example.test.ui.components
 
 import android.media.Image
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.layout.ContentScale
@@ -48,11 +50,20 @@ fun SlideComponentNews(
 ) {
     val lazyListState = rememberLazyListState()
 
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-            Text(text = "Berita & Dokumentasi", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                text = "Berita & Dokumentasi",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Lihat Semua", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = "Lihat Semua",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
                     contentDescription = "Donasi",
@@ -69,13 +80,14 @@ fun SlideComponentNews(
             flingBehavior = rememberSnapperFlingBehavior(lazyListState)
         ) {
             items(items) { item ->
-                Card(
-                    elevation = CardDefaults.cardElevation(2.dp),
+                OutlinedCard(
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     modifier = Modifier
-                        .width(250.dp)
+                        .width(300.dp)
                         .clickable { onItemClick(item.articleId) },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 ){
                     Column {
@@ -85,7 +97,7 @@ fun SlideComponentNews(
                             contentScale = ContentScale.Crop, // Gambar diisi penuh & dipotong jika perlu
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(115.dp) // Bagian gambar lebih dominan
+                                .height(160.dp) // Bagian gambar lebih dominan
 
                         )
 
@@ -93,19 +105,26 @@ fun SlideComponentNews(
                         Column(modifier = Modifier.padding(8.dp)) {
                             Text(
                                 text = item.title,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                lineHeight = 15.sp,
-                                maxLines = 2, // Maksimal 2 baris
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Row(
                                 modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(item.pubDate, fontSize = 12.sp, color = Color.Gray)
-                                Text(item.sourceName, fontSize = 12.sp, color = Color.Gray)
+                                Text(
+                                    item.sourceName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    item.pubDate,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
                             }
                         }
                     }

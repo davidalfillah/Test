@@ -124,7 +124,7 @@ fun SlideComponentBanner(
                     state = pagerState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 16.dp),
                     contentPadding = PaddingValues(
                         horizontal = (screenWidth - bannerWidth) / 2
                     ),

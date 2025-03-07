@@ -5,19 +5,14 @@ import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -34,10 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
@@ -66,6 +58,7 @@ import com.example.test.ui.screens.DigitalCardScreen
 import com.example.test.ui.screens.DonationDetailScreen
 import com.example.test.ui.screens.DonationInputScreen
 import com.example.test.ui.screens.DonationScreen
+import com.example.test.ui.screens.FullscreenImageScreen
 import com.example.test.ui.screens.HomeKtaScreen
 import com.example.test.ui.screens.HomeScreen
 import com.example.test.ui.screens.LoginScreen
@@ -116,8 +109,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             "biodataMember/{memberJson}" -> true
             "news_detail/{newsId}" -> true
             "news" -> false
-            "homeKta/{userId}"-> true
-            "aboutGrib"-> true
+            "homeKta/{userId}" -> true
+            "aboutGrib" -> true
             "account" -> false
             "profile_setup" -> true
             else -> false
@@ -130,8 +123,9 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     "home",
                     "shopping",
                     "chat",
-                    "account",))
-            {
+                    "account",
+                )
+            ) {
                 BottomNavigationBar(navController)
             }
         }
@@ -140,7 +134,31 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             navController = navController,
             startDestination = "home",
 
-        ) {
+            ) {
+            composable(
+                route = "fullscreen/{startIndex}",
+                arguments = listOf(navArgument("startIndex") { type = NavType.IntType })
+            ) { backStackEntry ->
+
+                // Ambil previousBackStackEntry untuk mendapatkan savedStateHandle
+                val previousEntry = navController.previousBackStackEntry
+
+                // Ambil daftar gambar dari savedStateHandle
+                val imageUrls = previousEntry
+                    ?.savedStateHandle
+                    ?.get<List<Map<String, String>>>("imageUrls") ?: emptyList()
+
+                // Konversi ke Pair agar mudah digunakan
+                val imageData = imageUrls.map { Pair(it["url"] ?: "", it["title"] ?: "No Title") }
+
+                // Ambil startIndex dari argument
+                val startIndex = backStackEntry.arguments?.getInt("startIndex") ?: 0
+
+                FullscreenImageScreen(navController, imageData, startIndex)
+            }
+
+
+
             composable(
                 route = "payment/{userId}/{relatedId}/{relatedType}",
                 arguments = listOf(
@@ -169,7 +187,9 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     relatedType = relatedType,
                     onPaymentSuccess = { transactionId, _ ->
                         navController.navigate("payment_success/$transactionId") {
-                            popUpTo("payment/{userId}/{relatedId}/{relatedType}") { inclusive = false }
+                            popUpTo("payment/{userId}/{relatedId}/{relatedType}") {
+                                inclusive = false
+                            }
                         }
                     },
                     onPaymentError = { error ->
@@ -200,7 +220,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 )
             }
             composable("donation_detail/{donationId}") { backStackEntry ->
-                val donationId = backStackEntry.arguments?.getString("donationId") ?: return@composable
+                val donationId =
+                    backStackEntry.arguments?.getString("donationId") ?: return@composable
                 DonationDetailScreen(navController, donationId, authViewModel = authViewModel)
             }
 
@@ -224,8 +245,12 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 val newsId = backStackEntry.arguments?.getString("newsId") ?: "1"
                 NewsDetailScreen(newsId, navController)
             }
-            composable("home") { HomeScreen(navController,
-                PaddingValues, authViewModel) }
+            composable("home") {
+                HomeScreen(
+                    navController,
+                    PaddingValues, authViewModel
+                )
+            }
             composable("status") { StatusScreen(navController) }
             composable("biodataMember/{memberJson}") { backStackEntry ->
                 val memberJson = backStackEntry.arguments?.getString("memberJson") ?: ""
@@ -255,7 +280,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     navArgument("name") { defaultValue = "" },
                     navArgument("address") { defaultValue = "" },
                     navArgument("imageUrl") { nullable = true },
-                            navArgument("birthDate") { defaultValue = "" }
+                    navArgument("birthDate") { defaultValue = "" }
                 )
             ) { backStackEntry ->
                 val nik = backStackEntry.arguments?.getString("nik") ?: ""
@@ -275,8 +300,20 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     birthDate = birthDate
                 )
             }
-            composable("registerUmkm") { RegistrationUmkmScreen(paddingValues = PaddingValues, navController, authViewModel = authViewModel) }
-            composable("profile_setup") { ProfileSetupScreen(navController, authViewModel, paddingValues = PaddingValues) }
+            composable("registerUmkm") {
+                RegistrationUmkmScreen(
+                    paddingValues = PaddingValues,
+                    navController,
+                    authViewModel = authViewModel
+                )
+            }
+            composable("profile_setup") {
+                ProfileSetupScreen(
+                    navController,
+                    authViewModel,
+                    paddingValues = PaddingValues
+                )
+            }
             composable(
                 "success?nextScreen={nextScreen}",
                 arguments = listOf(navArgument("nextScreen") { defaultValue = "home" })
@@ -286,7 +323,14 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             }
             composable("news") { NewsScreen(navController, paddingValues = PaddingValues) }
             composable("shopping") { ShoppingScreen(navController, paddingValues = PaddingValues) }
-            composable("chat") { ChatsScreen(navController, paddingValues = PaddingValues, chatViewModel = ChatViewModel(), authViewModel = authViewModel) }
+            composable("chat") {
+                ChatsScreen(
+                    navController,
+                    paddingValues = PaddingValues,
+                    chatViewModel = ChatViewModel(),
+                    authViewModel = authViewModel
+                )
+            }
             composable("chat_detail/{chatId}") { backStackEntry ->
                 val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
                 ChatDetailScreen(navController, ChatViewModel(), authViewModel, chatId)
@@ -306,7 +350,15 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
                 OtpScreen(navController, phoneNumber, authViewModel, paddingValues = PaddingValues)
             }
-            composable("login") { LoginScreen(navController, authViewModel, paddingValues = PaddingValues) }
+
+
+            composable("login") {
+                LoginScreen(
+                    navController,
+                    authViewModel,
+                    paddingValues = PaddingValues
+                )
+            }
             composable("dashboard") { DashboardScreen(navController, authViewModel) }
             composable("admin") { AdminScreen(navController, authViewModel) }
             composable("account") { AccountScreen(navController, authViewModel, PaddingValues) }
@@ -327,10 +379,11 @@ fun BottomNavigationBar(navController: NavHostController) {
 
     val currentRoute = navController.currentDestination?.route
 
-    NavigationBar(containerColor = colorScheme.onPrimary,
+    NavigationBar(
+        containerColor = colorScheme.surfaceContainerLowest,
         tonalElevation = 0.dp,
-        modifier = Modifier.shadow(elevation = 8.dp, shape = RectangleShape)
-        ) {
+        modifier = Modifier.shadow(elevation = 16.dp, shape = RectangleShape)
+    ) {
         items.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -341,8 +394,8 @@ fun BottomNavigationBar(navController: NavHostController) {
                 colors = NavigationBarItemColors(
                     selectedIconColor = colorScheme.onPrimary,
                     selectedTextColor = colorScheme.primary,
-                    unselectedIconColor = colorScheme.outline,
-                    unselectedTextColor = colorScheme.outline,
+                    unselectedIconColor = colorScheme.onSurfaceVariant,
+                    unselectedTextColor = colorScheme.onSurfaceVariant,
                     selectedIndicatorColor = colorScheme.primary,
                     disabledIconColor = colorScheme.primary,
                     disabledTextColor = colorScheme.primary
@@ -379,7 +432,9 @@ fun Context.showToast(message: String) {
 @Composable
 fun PaymentSuccessScreen(transactionId: String) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

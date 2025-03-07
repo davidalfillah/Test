@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -22,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -46,11 +48,20 @@ fun ListComponentNews(
 ) {
     val lazyListState = rememberLazyListState()
 
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-            Text(text = "Berita & Dokumentasi", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                text = "Berita & Dokumentasi",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Lihat Semua", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = "Lihat Semua",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
                     contentDescription = "Donasi",
@@ -63,37 +74,52 @@ fun ListComponentNews(
             modifier = Modifier.fillMaxWidth(),
         ) {
             items.forEach() { item ->
-                Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop, // Gambar diisi penuh & dipotong jika perlu
-                        modifier = Modifier
-                            .width(160.dp) // Bagian gambar lebih dominan
-
-                    )
-
-                    // Konten Berita
-                    Column(modifier = Modifier.padding(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .clickable { onItemClick(item.articleId) }
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically // Pastikan sejajar
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f) // Memberi ruang fleksibel untuk teks
+                    ) {
                         Text(
                             text = item.title,
-                            fontSize = 14.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            lineHeight = 15.sp,
-                            maxLines = 2, // Maksimal 2 baris
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                         Row(
-                            modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier.padding(top = 8.dp)
                         ) {
-                            Text(item.pubDate, fontSize = 12.sp, color = Color.Gray)
-                            Text(item.sourceName, fontSize = 12.sp, color = Color.Gray)
+                            Text(
+                                item.sourceName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                item.pubDate,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    AsyncImage(
+                        model = item.imageUrl,
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 120.dp, height = 80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
                 }
-                Spacer( modifier = Modifier.height(8.dp))
             }
         }
     }

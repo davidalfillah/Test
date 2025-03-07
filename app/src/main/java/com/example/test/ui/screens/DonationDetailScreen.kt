@@ -1,6 +1,9 @@
 package com.example.test.ui.screens
 
+import android.net.Uri
+import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +52,7 @@ import coil3.compose.AsyncImage
 import com.example.test.AuthViewModel
 import com.example.test.ui.viewModels.Donation
 import com.example.test.ui.viewModels.DonationViewModel
+import com.example.test.ui.viewModels.ImageViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +65,7 @@ fun DonationDetailScreen(
     val context = LocalContext.current
     var donation by remember { mutableStateOf<Donation?>(null) }
     val user by authViewModel.user.collectAsState()
-
+    val imageViewModel: ImageViewModel = viewModel()
     // Fetch data donasi berdasarkan ID
     LaunchedEffect(donationId) {
         viewModel.getDonationById(donationId, onSuccess = { fetchedDonation ->
@@ -117,6 +121,21 @@ fun DonationDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
+                        .clickable {
+                            val imageUrls = listOf(
+                                mapOf("url" to donation.thumbnailUrl, "title" to donation.title)
+                            )
+
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("imageUrls", imageUrls)
+
+                            val startIndex = imageUrls.indexOfFirst { it["url"] == donation.thumbnailUrl }
+
+                            navController.navigate("fullscreen/$startIndex")
+                        }
+
+
                 )
 
                 // Informasi Donasi
@@ -164,6 +183,20 @@ fun DonationDetailScreen(
                                         .fillMaxWidth()
                                         .height(200.dp)
                                         .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            val imageUrls = listOf(
+                                                mapOf("url" to contentItem.value, "title" to donation.title)
+                                            )
+
+                                            navController.currentBackStackEntry
+                                                ?.savedStateHandle
+                                                ?.set("imageUrls", imageUrls)
+
+                                            val startIndex = imageUrls.indexOfFirst { it["url"] == contentItem.value }
+
+                                            navController.navigate("fullscreen/$startIndex")
+                                        }
+
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                             }

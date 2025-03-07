@@ -1,5 +1,6 @@
 package com.example.test.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -68,19 +70,21 @@ fun SlideComponentProduct(
 
 
 
-    Column(modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()) {
+    Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
         // Header
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = "Produk & Jasa UMKM", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
+            Text(
+                text = "Produk & Jasa UMKM",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Lihat Semua", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = "Lihat Semua",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
                     contentDescription = "Donasi",
@@ -103,8 +107,8 @@ fun SlideComponentProduct(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     rowItems.forEach { item ->
-                        Card(
-                            elevation = CardDefaults.cardElevation(2.dp),
+                        OutlinedCard(
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { /* Aksi ketika item diklik */ },
@@ -124,25 +128,21 @@ fun SlideComponentProduct(
                                 Column(modifier = Modifier.padding(8.dp)) {
                                     Text(
                                         text = "${formatCurrency2(item.price.toLong())}",
-                                        fontSize = 12.sp,
-                                        lineHeight = 13.sp,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = item.title,
-                                        fontSize = 12.sp,
-                                        color = Color.Black,
-                                        lineHeight = 13.sp,
+                                        style = MaterialTheme.typography.bodySmall,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = item.location,
-                                        fontSize = 12.sp,
-                                        color = Color.Black,
-                                        lineHeight = 13.sp,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
