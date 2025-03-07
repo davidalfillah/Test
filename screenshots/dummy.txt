@@ -1,0 +1,1 @@
+Ini adalah file dummy agar folder screenshots muncul di GitHub.
