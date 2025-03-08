@@ -119,7 +119,7 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* Aksi ketika tombol pencarian ditekan */ }) {
+                        IconButton(onClick = { navController.navigate("searchNews") }) { // Navigasi ke SearchScreen
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",

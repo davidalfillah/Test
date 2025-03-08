@@ -117,7 +117,8 @@ data class News(
     val likes: Map<String, Boolean> = emptyMap(),
     val comments: List<String> = emptyList(),
     val commentCount: Int = 0,
-    val shares: Int = 0
+    val shares: Int = 0,
+    val searchKeywords: List<String> = emptyList() // Field baru untuk pencarian
 )
 
 

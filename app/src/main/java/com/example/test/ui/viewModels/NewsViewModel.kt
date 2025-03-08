@@ -2,6 +2,12 @@ package com.example.test.ui.viewModels
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.algolia.client.api.SearchClient
+import com.algolia.client.model.search.SearchForHits
+import com.algolia.client.model.search.SearchMethodParams
+import com.algolia.client.model.search.SearchResponse
+import com.algolia.client.model.search.SearchResponses // Impor eksplisit
 import com.example.test.ui.dataType.Bookmark
 import com.example.test.ui.dataType.Comment
 import com.example.test.ui.dataType.News
@@ -13,15 +19,136 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class NewsViewModel : ViewModel() {
+    private val client = SearchClient(
+        appId = "Q77GNR02CJ",
+        apiKey = "f930f85e418b785e53a57aa4c7c25232",
+    )
+    private val indexName = "newsSearch"
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val newsCollection = db.collection("news")
     private val usersCollection = db.collection("users")
     private val listeners = mutableListOf<ListenerRegistration>()
+
+    fun migrateNewsData() {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("news")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.documents.forEach { doc ->
+                    val news = doc.toObject(News::class.java) ?: return@forEach
+                    val keywords = news.title
+                        .lowercase()
+                        .split("\\s+".toRegex())
+                        .map { it.trim().replace("[^a-zA-Z0-9]".toRegex(), "") }
+                        .filter { it.isNotBlank() }
+                    db.collection("news").document(news.id)
+                        .update("searchKeywords", keywords)
+                        .addOnSuccessListener { println("Updated ${news.id}") }
+                        .addOnFailureListener { e -> println("Error updating ${news.id}: $e") }
+                }
+            }
+    }
+
+    fun searchNews(
+        query: String,
+        onLoading: () -> Unit = {},
+        onSuccess: (List<News>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (query.isBlank()) {
+            onSuccess(emptyList())
+            return
+        }
+
+        onLoading()
+        viewModelScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    client.search(
+                        SearchMethodParams(
+                            requests = listOf(
+                                SearchForHits(
+                                    indexName = indexName,
+                                    query = query,
+                                    hitsPerPage = 20
+                                )
+                            )
+                        )
+                    )
+                }
+
+                println("Full response: $response")
+                val firstResult = response.results.firstOrNull()
+                println("First result: $firstResult")
+
+                val hits = (firstResult as? SearchResponse)?.hits ?: emptyList()
+                println("Hits: $hits")
+
+                val newsList = hits.mapNotNull { hit ->
+                    try {
+                        val data = hit.highlightResult as? Map<String, Any> ?: return@mapNotNull null
+                        val id = hit.objectID ?: return@mapNotNull null
+
+                        // Gunakan highlighted title dari highlightResult, fallback ke data["title"]
+                        val title = hit.highlightResult?.get("title")?.toString()
+                            ?: data["title"]?.toString() ?: ""
+
+                        val category = data["category"]?.toString() ?: ""
+                        val thumbnailUrl = data["thumbnailUrl"]?.toString() ?: ""
+                        val createdAtMillis = data["createdAt"]?.toString()?.toLongOrNull()?.let {
+                            Timestamp(it / 1000, ((it % 1000) * 1000000).toInt())
+                        }
+
+                        // Parsing content ke List<NewsContent>
+                        val contentList = (data["content"] as? List<Map<String, Any>>)?.mapNotNull { contentItem ->
+                            NewsContent(
+                                text = contentItem["text"]?.toString(),
+                                imageUrl = contentItem["imageUrl"]?.toString(),
+                                videoUrl = contentItem["videoUrl"]?.toString(),
+                                videoThumbnailUrl = contentItem["videoThumbnailUrl"]?.toString(),
+                                caption = contentItem["caption"]?.toString(),
+                                articleUrl = contentItem["articleUrl"]?.toString(),
+                                articleTitle = contentItem["articleTitle"]?.toString()
+                            )
+                        } ?: emptyList()
+
+                        // Parsing author ke User
+                        val authorMap = data["author"] as? Map<String, Any>
+                        val author = User(
+                            uid = authorMap?.get("uid")?.toString() ?: "",
+                            name = authorMap?.get("name")?.toString() ?: "",
+                            profilePicUrl = authorMap?.get("profilePicUrl")?.toString() ?: "",
+                            phone = authorMap?.get("phone")?.toString() ?: "",
+                            role = authorMap?.get("role")?.toString() ?: "user",
+                        )
+
+                        News(
+                            id = id,
+                            title = title,
+                            category = category,
+                            content = contentList,
+                            thumbnailUrl = thumbnailUrl,
+                            author = author,
+                            createdAt = createdAtMillis
+                        )
+                    } catch (e: Exception) {
+                        println("Error parsing hit: $e")
+                        null
+                    }
+                }
+                onSuccess(newsList)
+            } catch (e: Exception) {
+                onError(e.message ?: "Gagal mencari berita")
+            }
+        }
+    }
 
     fun fetchLatestNews(
         limit: Long = 5,
@@ -159,28 +286,36 @@ class NewsViewModel : ViewModel() {
         listeners.add(listener)
     }
 
-    /** Menambah Berita Baru */
+    private fun generateSearchKeywords(title: String): List<String> {
+        val keywords = title
+            .lowercase()
+            .split("\\s+".toRegex())
+            .map { it.trim().replace("[^a-zA-Z0-9]".toRegex(), "") }
+            .filter { it.isNotBlank() }
+
+        // Generate semua prefiks untuk setiap kata
+        val prefixes = mutableListOf<String>()
+        keywords.forEach { word ->
+            for (i in 1..word.length) {
+                prefixes.add(word.substring(0, i))
+            }
+        }
+        return prefixes.distinct()
+    }
+
     fun addNews(
         news: News,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        if (news.title.isBlank()) {
-            onError("Judul berita tidak boleh kosong")
-            return
-        }
-        val newsId = newsCollection.document().id
-        val newNews = news.copy(
-            id = newsId,
-            createdAt = Timestamp.now(),
-            updatedAt = Timestamp.now()
-        )
-
-        newsCollection.document(newsId).set(newNews)
+        val keywords = generateSearchKeywords(news.title)
+        val newsWithKeywords = news.copy(searchKeywords = keywords)
+        val db = FirebaseFirestore.getInstance()
+        db.collection("news").document(news.id)
+            .set(newsWithKeywords)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { e -> onError(e.message ?: "Gagal menambah berita") }
     }
-
     fun toggleLike(
         newsId: String,
         userId: String,

@@ -436,54 +436,55 @@ fun HomeScreen(
                 }
                 Button(
                     onClick = {
-                        val user = FirebaseAuth.getInstance().currentUser
-                        val sampleNews = News(
-                            title = "Hercules Bakal Siapkan 10 Ribu Kader GRIB Jaya Sambut Pelantikan Prabowo",
-                            category = "Umum",
-                            content = listOf(
-                                // Konten Teks
-                                NewsContent(
-                                    text = "Ketua Umum DPP Gerakan Rakyat Indonesia Bersatu Jaya (GRIB Jaya) Hercules Rosario De Marshal mengatakan, ribuan anggotanya akan disiapkan untuk menyambut pelantikan Prabowo Subianto dan Gibran Rakabuming Raka sebagai Presiden dan Wakil Presiden periode 2024-2029 pada 20 Oktober 2024 mendatang. "
-                                ),
-                                NewsContent(
-                                    text = "\"Saya Insya Allah akan mempersiapkan anggota PDL baret merah (GRIB Jaya), mungkin sekitar 10.000 anggota. Untuk setelah pelantikan kita akan sambut beliau,\" kata Hercules di Kantor DPP GRIB Jaya, Jakarta Barat, Jumat, 17 Agustus 2024. "
-                                ),
-                                NewsContent(
-                                    text = "Hercules menegaskan, kehadiran ribuan anggotanya nanti, ialah sebagai bentuk penghormatan kepada Prabowo, sosok yang ia kagumi. "
-                                ),
-                                NewsContent(
-                                    text = "\"Ini bukan demo. Kita sambut presiden ke-8 RI. Beliau presiden rakyat Indonesia dan negara Indonesia,\" ucap Hercules. "
-                                ),
-                                NewsContent(
-                                    text = "Hercules meyakini, Prabowo-Gibran akan membawa keadilan dan kesejahteraan bagi seluruh masyarakat, dengan menjunjung  hukum sebagai panglima tertinggi. "
-                                ),
-                                NewsContent(
-                                    articleUrl = "https://www.example.com/article",
-                                    articleTitle = "Artikel Menarik Tentang Politik"
-                                ),
-                                NewsContent(
-                                    text = "\"Saya yakin, di periode Pak Prabowo dan Mas Gibran Rakabuming Raka ini, keadilan akan tegak. Tak ada yang kebal hukum. Hukum adalah panglima tertinggi. Pemerintah baru, pasti akan memberikan keadilan bagi semua rakyat indonesia. Termasuk jika saya salah, termasuk jika anggota GRIB pun tidak ada yang kebal hukum. Saya yakin presiden prabowo akan menjaga rakyat indonesia, menjaga NKRI. NKRI Harga mati. Beliau itu orangnya keras, tapi untuk kebenaran. Beliau selalu berpihak ke rakyat,\" tukasnya. "
-                                ),
-                                NewsContent(
-                                    imageUrl = "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0",
-                                    caption = "Gambar pemandangan indah"
-                                ),
-                            ),
-                            thumbnailUrl = "https://sinpo.id/storage/2024/08/hercules-bakal-siapkan-10-ribu-kader-grib-jaya-sambut-pelantikan-prabowo-17082024-183011.jpg",
-                            author = User(
-                                uid = user?.uid ?: "anonymous",
-                                name = "Redaksi Grib"
-                            )
-                        )
-                        newsViewModel.addNews(
-                            news = sampleNews,
-                            onSuccess = {
-                                Log.d("NewsViewModel", "Berita berhasil ditambahkan")
-                            },
-                            onError = { errorMsg ->
-                                error = errorMsg
-                            }
-                        )
+                        newsViewModel.migrateNewsData()
+//                        val user = FirebaseAuth.getInstance().currentUser
+//                        val sampleNews = News(
+//                            title = "Hercules Bakal Siapkan 10 Ribu Kader GRIB Jaya Sambut Pelantikan Prabowo",
+//                            category = "Umum",
+//                            content = listOf(
+//                                // Konten Teks
+//                                NewsContent(
+//                                    text = "Ketua Umum DPP Gerakan Rakyat Indonesia Bersatu Jaya (GRIB Jaya) Hercules Rosario De Marshal mengatakan, ribuan anggotanya akan disiapkan untuk menyambut pelantikan Prabowo Subianto dan Gibran Rakabuming Raka sebagai Presiden dan Wakil Presiden periode 2024-2029 pada 20 Oktober 2024 mendatang. "
+//                                ),
+//                                NewsContent(
+//                                    text = "\"Saya Insya Allah akan mempersiapkan anggota PDL baret merah (GRIB Jaya), mungkin sekitar 10.000 anggota. Untuk setelah pelantikan kita akan sambut beliau,\" kata Hercules di Kantor DPP GRIB Jaya, Jakarta Barat, Jumat, 17 Agustus 2024. "
+//                                ),
+//                                NewsContent(
+//                                    text = "Hercules menegaskan, kehadiran ribuan anggotanya nanti, ialah sebagai bentuk penghormatan kepada Prabowo, sosok yang ia kagumi. "
+//                                ),
+//                                NewsContent(
+//                                    text = "\"Ini bukan demo. Kita sambut presiden ke-8 RI. Beliau presiden rakyat Indonesia dan negara Indonesia,\" ucap Hercules. "
+//                                ),
+//                                NewsContent(
+//                                    text = "Hercules meyakini, Prabowo-Gibran akan membawa keadilan dan kesejahteraan bagi seluruh masyarakat, dengan menjunjung  hukum sebagai panglima tertinggi. "
+//                                ),
+//                                NewsContent(
+//                                    articleUrl = "https://www.example.com/article",
+//                                    articleTitle = "Artikel Menarik Tentang Politik"
+//                                ),
+//                                NewsContent(
+//                                    text = "\"Saya yakin, di periode Pak Prabowo dan Mas Gibran Rakabuming Raka ini, keadilan akan tegak. Tak ada yang kebal hukum. Hukum adalah panglima tertinggi. Pemerintah baru, pasti akan memberikan keadilan bagi semua rakyat indonesia. Termasuk jika saya salah, termasuk jika anggota GRIB pun tidak ada yang kebal hukum. Saya yakin presiden prabowo akan menjaga rakyat indonesia, menjaga NKRI. NKRI Harga mati. Beliau itu orangnya keras, tapi untuk kebenaran. Beliau selalu berpihak ke rakyat,\" tukasnya. "
+//                                ),
+//                                NewsContent(
+//                                    imageUrl = "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0",
+//                                    caption = "Gambar pemandangan indah"
+//                                ),
+//                            ),
+//                            thumbnailUrl = "https://sinpo.id/storage/2024/08/hercules-bakal-siapkan-10-ribu-kader-grib-jaya-sambut-pelantikan-prabowo-17082024-183011.jpg",
+//                            author = User(
+//                                uid = user?.uid ?: "anonymous",
+//                                name = "Redaksi Grib"
+//                            )
+//                        )
+//                        newsViewModel.addNews(
+//                            news = sampleNews,
+//                            onSuccess = {
+//                                Log.d("NewsViewModel", "Berita berhasil ditambahkan")
+//                            },
+//                            onError = { errorMsg ->
+//                                error = errorMsg
+//                            }
+//                        )
                     },
                     modifier = Modifier
                         .padding(16.dp)

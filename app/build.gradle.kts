@@ -62,8 +62,9 @@ dependencies {
     implementation(libs.androidx.emoji2.bundled)
     implementation(libs.androidx.emoji2.emojipicker)
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
-    implementation("androidx.compose.ui:ui-viewbinding:1.6.0") // Atau versi terbaru
-
+    implementation("androidx.compose.ui:ui-viewbinding:1.6.0")
+    implementation ("io.ktor:ktor-client-okhttp:3.1.0")
+    implementation ("com.algolia:algoliasearch-client-kotlin:3.15.2")
     implementation ("com.google.zxing:core:3.5.3")
     implementation ("com.xendit:xendit-android:4.2.1")
     implementation("androidx.hilt:hilt-navigation-fragment:1.0.0")

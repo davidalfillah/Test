@@ -70,6 +70,7 @@ import com.example.test.ui.screens.PaymentScreen
 import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.RegistrationScreen
 import com.example.test.ui.screens.RegistrationUmkmScreen
+import com.example.test.ui.screens.SearchNewsScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
@@ -135,6 +136,7 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             startDestination = "home",
 
             ) {
+            composable("searchNews") { SearchNewsScreen(navController = navController) } // Tambahkan rute ini
             composable(
                 route = "fullscreen/{startIndex}",
                 arguments = listOf(navArgument("startIndex") { type = NavType.IntType })
