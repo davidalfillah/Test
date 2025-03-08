@@ -60,6 +60,8 @@ import kotlin.math.max
 @Composable
 fun SlideComponentProduct(
     items: List<Product>,
+    title: String? = null,
+    moreText: String? = "Lihat Semua",
     onItemClick: (String) -> Unit,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -67,30 +69,32 @@ fun SlideComponentProduct(
     val columns = max(1, (screenWidth / cardSize).toInt()) // Hitung jumlah kolom yang muat
 
 
-
-
-
     Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
-        // Header
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-            Text(
-                text = "Produk & Jasa UMKM",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Lihat Semua",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
-                    contentDescription = "Donasi",
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
-                )
+        title.let {
+            if (it != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
+                    Text(
+                        text = it,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if(moreText != "" && moreText != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = moreText,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
+                                contentDescription = "Donasi",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
+                            )
+                        }
+                    }
+                }
             }
         }
 

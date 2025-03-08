@@ -45,32 +45,38 @@ import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 fun ListComponentNews(
     items: List<News>, // List berisi pasangan ikon & teks
     onItemClick: (String) -> Unit,
+    title: String? = null,
+    moreText: String? = "Lihat Semua",
     navController: NavHostController
 ) {
     val lazyListState = rememberLazyListState()
 
-
-
     Column(modifier = Modifier.padding(vertical = 8.dp).padding(bottom = 16.dp).fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
-            Text(
-                text = "Berita & Dokumentasi",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Lihat Semua",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
-                    contentDescription = "Donasi",
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
-                )
+        title.let {
+            if (it != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).fillMaxWidth(), horizontalArrangement =  Arrangement.SpaceBetween) {
+                    Text(
+                        text = it,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if(moreText != "" && moreText != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = moreText,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.baseline_arrow_forward_ios_24),
+                                contentDescription = "Donasi",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary // Warna ikon agar kontras
+                            )
+                        }
+                    }
+                }
             }
         }
         Column(

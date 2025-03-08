@@ -116,6 +116,7 @@ data class News(
     val viewCount: Int = 0,
     val likes: Map<String, Boolean> = emptyMap(),
     val comments: List<String> = emptyList(),
+    val commentCount: Int = 0,
     val shares: Int = 0
 )
 
