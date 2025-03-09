@@ -38,14 +38,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,14 +67,19 @@ import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.components.UserProfileImage
+import com.example.test.ui.dataTest.categories
 import com.example.test.ui.dataTest.products
+import com.example.test.ui.dataTest.subcategories
 import com.example.test.ui.dataType.News
-import com.example.test.ui.dataType.NewsContent
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
 import com.example.test.ui.viewModels.NewsViewModel
+import com.example.test.ui.viewModels.ProductViewModel
+import com.example.test.ui.viewModels.images
+import com.example.test.ui.viewModels.product
+import com.example.test.ui.viewModels.variants
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 data class Product(
@@ -129,7 +132,7 @@ fun HomeScreen(
             ads.value = fetchedAds
             isLoading = false // Matikan loading setelah data diambil
         }
-        newsViewModel.fetchNews(
+        newsViewModel.fetchLatestNews(
             onLoading = { isLoading = true },
             onSuccess = { fetchedNews ->
                 newsList = fetchedNews
@@ -436,7 +439,14 @@ fun HomeScreen(
                 }
                 Button(
                     onClick = {
-                        newsViewModel.migrateNewsData()
+                        val product = product
+                        val images = images
+                        val variants = variants
+                        val productViewModel = ProductViewModel()
+
+                        productViewModel.addProductToFirestore(product, images, variants)
+//
+//                        newsViewModel.migrateNewsData()
 //                        val user = FirebaseAuth.getInstance().currentUser
 //                        val sampleNews = News(
 //                            title = "Hercules Bakal Siapkan 10 Ribu Kader GRIB Jaya Sambut Pelantikan Prabowo",
@@ -560,9 +570,16 @@ fun HomeScreen(
 
                 PublicComplaints()
                 SlideComponentNews(
-                    items = newsList, onItemClick = { menu ->
+                    items = newsList,
+                    onItemClick = { menu ->
                         navController.navigate("news_detail/$menu")
-                    }, navController = navController
+                    },
+                    navController = navController,
+                    title = "Berita Terkini",
+                    moreText = "Lihat Semua",
+                    moreTextClick = { menu ->
+                        navController.navigate("news")
+                    }
                 )
 //                SlideComponentCharity(
 //                    items = charitys,

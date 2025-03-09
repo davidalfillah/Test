@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id ("org.jetbrains.kotlin.plugin.serialization") version ("1.6.10")
 }
 
 android {
@@ -65,6 +66,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-viewbinding:1.6.0")
     implementation ("io.ktor:ktor-client-okhttp:3.1.0")
     implementation ("com.algolia:algoliasearch-client-kotlin:3.15.2")
+    implementation ("com.algolia:instantsearch-compose:3.3.1")
+    implementation ("com.algolia:instantsearch-android:3.3.1")
+    implementation ("com.algolia:instantsearch-insights-android:3.3.1")
+    implementation ("com.algolia:instantsearch-android-paging3:3.3.1")
+    implementation ("com.algolia:instantsearch-android-loading:3.3.1")
+    implementation ("com.algolia.instantsearch:voice:1.1.0")
     implementation ("com.google.zxing:core:3.5.3")
     implementation ("com.xendit:xendit-android:4.2.1")
     implementation("androidx.hilt:hilt-navigation-fragment:1.0.0")
@@ -99,6 +106,7 @@ dependencies {
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.paging.compose.android)
 
     val camerax_version = "1.1.0-beta01"
     implementation ("androidx.camera:camera-core:${camerax_version}")

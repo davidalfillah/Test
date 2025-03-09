@@ -67,10 +67,11 @@ import com.example.test.ui.screens.NewsDetailScreen
 import com.example.test.ui.screens.NewsScreen
 import com.example.test.ui.screens.OtpScreen
 import com.example.test.ui.screens.PaymentScreen
+import com.example.test.ui.screens.ProductCategoryScreen
 import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.RegistrationScreen
 import com.example.test.ui.screens.RegistrationUmkmScreen
-import com.example.test.ui.screens.SearchNewsScreen
+import com.example.test.ui.screens.SearchScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
@@ -78,6 +79,7 @@ import com.example.test.ui.screens.UploadKtpScreen
 import com.example.test.ui.screens.saveBitmapToCache
 import com.example.test.ui.viewModels.ChatViewModel
 import com.example.test.ui.viewModels.MemberViewModel
+import com.example.test.ui.viewModels.NewsViewModel
 import com.example.test.ui.viewModels.PaymentViewModel
 
 //Email : hellogrib430@gmail.com
@@ -136,7 +138,21 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             startDestination = "home",
 
             ) {
-            composable("searchNews") { SearchNewsScreen(navController = navController) } // Tambahkan rute ini
+
+            composable("searchNews") {
+                SearchScreen(
+                    navController,
+                    NewsViewModel()
+                )
+            }
+
+            composable("productCategories") {
+                ProductCategoryScreen(
+                    navController,
+                    paddingValues = PaddingValues
+                )
+            }
+
             composable(
                 route = "fullscreen/{startIndex}",
                 arguments = listOf(navArgument("startIndex") { type = NavType.IntType })

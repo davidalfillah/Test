@@ -109,6 +109,7 @@ fun NewsDetailScreen(
     val commentsSheetState = rememberModalBottomSheetState() // State untuk ModalBottomSheet
     var showCommentsBottomSheet by remember { mutableStateOf(false) }
     var isBookmarked by remember { mutableStateOf(false) }
+    var hasUpdatedViewCount by remember { mutableStateOf(false) }
 
 
     val scrollState = rememberLazyListState()
@@ -128,6 +129,11 @@ fun NewsDetailScreen(
                 news = fetchedNews
                 isLoading = false
                 error = null
+                if (!hasUpdatedViewCount) {
+                    newsViewModel.updateViewCount(newsId, fetchedNews.viewCount)
+                    news = fetchedNews.copy(viewCount = fetchedNews.viewCount + 1L) // Update lokal
+                    hasUpdatedViewCount = true // Tandai sudah diperbarui
+                }
                 newsViewModel.fetchRelatedNews(
                     currentNewsId = newsId,
                     category = fetchedNews.category,

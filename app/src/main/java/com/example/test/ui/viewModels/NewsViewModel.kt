@@ -1,13 +1,11 @@
 package com.example.test.ui.viewModels
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.algolia.client.api.SearchClient
 import com.algolia.client.model.search.SearchForHits
 import com.algolia.client.model.search.SearchMethodParams
 import com.algolia.client.model.search.SearchResponse
-import com.algolia.client.model.search.SearchResponses // Impor eksplisit
 import com.example.test.ui.dataType.Bookmark
 import com.example.test.ui.dataType.Comment
 import com.example.test.ui.dataType.News
@@ -15,15 +13,30 @@ import com.example.test.ui.dataType.NewsContent
 import com.example.test.ui.screens.User
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+
+data class NewsSearch(
+    val id: String = "",
+    val title: String = "",
+    val highlightedTitle: String? = null, // Teks yang disorot
+    val image: String = "", // Thumbnail URL
+    val author: UserAuthor = UserAuthor(),
+    val createdAt: Timestamp = Timestamp.now()
+)
+
+data class UserAuthor(
+    val name: String = ""
+)
+
 class NewsViewModel : ViewModel() {
+
     private val client = SearchClient(
         appId = "Q77GNR02CJ",
         apiKey = "f930f85e418b785e53a57aa4c7c25232",
@@ -59,7 +72,7 @@ class NewsViewModel : ViewModel() {
     fun searchNews(
         query: String,
         onLoading: () -> Unit = {},
-        onSuccess: (List<News>) -> Unit,
+        onSuccess: (List<NewsSearch>) -> Unit,
         onError: (String) -> Unit
     ) {
         if (query.isBlank()) {
@@ -77,7 +90,8 @@ class NewsViewModel : ViewModel() {
                                 SearchForHits(
                                     indexName = indexName,
                                     query = query,
-                                    hitsPerPage = 20
+                                    hitsPerPage = 20,
+                                    attributesToHighlight = listOf("title", "content.text", "author.name")
                                 )
                             )
                         )
@@ -93,56 +107,33 @@ class NewsViewModel : ViewModel() {
 
                 val newsList = hits.mapNotNull { hit ->
                     try {
-                        val data = hit.highlightResult as? Map<String, Any> ?: return@mapNotNull null
-                        val id = hit.objectID ?: return@mapNotNull null
+                        val id = hit.objectID ?: ""
 
-                        // Gunakan highlighted title dari highlightResult, fallback ke data["title"]
-                        val title = hit.highlightResult?.get("title")?.toString()
-                            ?: data["title"]?.toString() ?: ""
+                        // Title
+                        val title = hit.additionalProperties?.get("title")?.toString() ?: ""
+                        // Image
+                        val image = hit.additionalProperties?.get("thumbnailUrl")?.toString() ?: ""
+                        val createdAt = hit.additionalProperties?.get("createdAt").toString().toLongOrNull()?.let { Timestamp(it / 1000, ((it % 1000) * 1000000).toInt()) } ?: Timestamp.now()
+                        // Author
+                        val authorMap = hit.additionalProperties?.get("author") as? Map<*, *>
+                        val authorHighlight = (hit.additionalProperties?.get("author") as? Map<*, *>)?.get("value") as? Map<*, *>
+                        val authorName = authorHighlight?.get("name")?.toString() ?: authorMap?.get("name")?.toString() ?: ""
 
-                        val category = data["category"]?.toString() ?: ""
-                        val thumbnailUrl = data["thumbnailUrl"]?.toString() ?: ""
-                        val createdAtMillis = data["createdAt"]?.toString()?.toLongOrNull()?.let {
-                            Timestamp(it / 1000, ((it % 1000) * 1000000).toInt())
-                        }
+                        val author = UserAuthor(name = authorName.trim().removePrefix("\"").removeSuffix("\""))
 
-                        // Parsing content ke List<NewsContent>
-                        val contentList = (data["content"] as? List<Map<String, Any>>)?.mapNotNull { contentItem ->
-                            NewsContent(
-                                text = contentItem["text"]?.toString(),
-                                imageUrl = contentItem["imageUrl"]?.toString(),
-                                videoUrl = contentItem["videoUrl"]?.toString(),
-                                videoThumbnailUrl = contentItem["videoThumbnailUrl"]?.toString(),
-                                caption = contentItem["caption"]?.toString(),
-                                articleUrl = contentItem["articleUrl"]?.toString(),
-                                articleTitle = contentItem["articleTitle"]?.toString()
-                            )
-                        } ?: emptyList()
-
-                        // Parsing author ke User
-                        val authorMap = data["author"] as? Map<String, Any>
-                        val author = User(
-                            uid = authorMap?.get("uid")?.toString() ?: "",
-                            name = authorMap?.get("name")?.toString() ?: "",
-                            profilePicUrl = authorMap?.get("profilePicUrl")?.toString() ?: "",
-                            phone = authorMap?.get("phone")?.toString() ?: "",
-                            role = authorMap?.get("role")?.toString() ?: "user",
-                        )
-
-                        News(
+                        NewsSearch(
                             id = id,
-                            title = title,
-                            category = category,
-                            content = contentList,
-                            thumbnailUrl = thumbnailUrl,
+                            title = title.trim().removePrefix("\"").removeSuffix("\""),
+                            image = image.trim().removePrefix("\"").removeSuffix("\""),
                             author = author,
-                            createdAt = createdAtMillis
+                            createdAt = createdAt
                         )
                     } catch (e: Exception) {
                         println("Error parsing hit: $e")
                         null
                     }
                 }
+                println("Search results: $newsList")
                 onSuccess(newsList)
             } catch (e: Exception) {
                 onError(e.message ?: "Gagal mencari berita")
@@ -396,6 +387,20 @@ class NewsViewModel : ViewModel() {
             onSuccess()
         }.addOnFailureListener { e ->
             onError(e.message ?: "Gagal menambah komentar")
+        }
+    }
+
+    fun updateViewCount(newsId: String, currentViewCount: Long) {
+        viewModelScope.launch {
+            try {
+                val newViewCount = currentViewCount + 1
+                db.collection("news").document(newsId)
+                    .update("viewCount", newViewCount)
+                    .await()
+                println("ViewCount updated to $newViewCount for newsId: $newsId")
+            } catch (e: Exception) {
+                println("Failed to update viewCount: ${e.message}")
+            }
         }
     }
 

@@ -20,15 +20,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +38,6 @@ import androidx.navigation.NavHostController
 import com.example.test.ui.components.ListComponentNews
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
-import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataType.News
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
@@ -53,6 +48,8 @@ import com.example.test.ui.viewModels.NewsViewModel
 fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, ) {
     val ads = remember { mutableStateOf(emptyList<Ad>()) }
     var newsList by remember { mutableStateOf<List<News>>(emptyList()) }
+    var latestNewsList by remember { mutableStateOf<List<News>>(emptyList()) }
+    var trendingNewsList by remember { mutableStateOf<List<News>>(emptyList()) }
     var bookmarkedNewsList by remember { mutableStateOf<List<News>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -63,28 +60,40 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
 
 
     LaunchedEffect(Unit) {
-        adViewModel.getAds { fetchedAds ->
-            ads.value = fetchedAds
-            isLoading = false
-        }
         newsViewModel.fetchNews(
             onLoading = { isLoading = true },
             onSuccess = { fetchedNews ->
                 newsList = fetchedNews
                 isLoading = false
                 error = null
-            },
-            onError = { errorMessage ->
-                error = errorMessage
-                isLoading = false
-            }
-        )
-        newsViewModel.fetchBookmarkedNews(
-            onLoading = { isLoading = true },
-            onSuccess = { fetchedBookmarks ->
-                bookmarkedNewsList = fetchedBookmarks
-                isLoading = false
-                error = null
+                newsViewModel.fetchTrendingNews(
+                    onLoading = { isLoading = true },
+                    onSuccess = { fetchedTrendingNews ->
+                        // Filter trendingNews agar tidak ada yang sudah di latestNewsList
+                        val latestIds = latestNewsList.map { it.id }.toSet()
+                        trendingNewsList = fetchedTrendingNews.filter { it.id !in latestIds }
+                        isLoading = false
+                        error = null
+                    },
+                    onError = { errorMessage ->
+                        error = errorMessage
+                        isLoading = false
+                    }
+                )
+                newsViewModel.fetchLatestNews(
+                    onLoading = { isLoading = true },
+                    onSuccess = { fetchedLatestNews ->
+                        // Filter latestNews agar tidak ada yang sudah di trendingNewsList
+                        val trendingIds = trendingNewsList.map { it.id }.toSet()
+                        latestNewsList = fetchedLatestNews.filter { it.id !in trendingIds }
+                        isLoading = false
+                        error = null
+                    },
+                    onError = { errorMessage ->
+                        error = errorMessage
+                        isLoading = false
+                    }
+                )
             },
             onError = { errorMessage ->
                 error = errorMessage
@@ -162,7 +171,9 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
                 Text(
                     text = error ?: "Terjadi kesalahan",
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp)
                 )
             } else {
                 Column(
@@ -178,57 +189,37 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
                                 isLoading = isLoading,
                                 onItemClick = { actionValue ->
                                     Log.d("Banner Clicked", "Aksi: $actionValue")
-                                }
-                            )
-                            SlideComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
                                 },
-                                navController = navController
                             )
+                            if(latestNewsList.isNotEmpty()) {
+                                SlideComponentNews(
+                                    items = latestNewsList,
+                                    onItemClick = { id ->
+                                        navController.navigate("news_detail/${id}")
+                                    },
+                                    navController = navController,
+                                    title = "Berita Terbaru",
+                                )
+                            }
+                            if(trendingNewsList.isNotEmpty()) {
+                                SlideComponentNews(
+                                    items = trendingNewsList,
+                                    onItemClick = { id ->
+                                        navController.navigate("news_detail/${id}")
+                                    },
+                                    navController = navController,
+                                    title = "Berita Populer",
+                                )
+                            }
                             ListComponentNews(
                                 items = newsList,
                                 onItemClick = { id ->
                                     navController.navigate("news_detail/${id}")
                                 },
-                                navController = navController
+                                navController = navController,
+                                title = "Semua Berita"
                             )
-                            SlideComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
-                                },
-                                navController = navController
-                            )
-                            SlideComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
-                                },
-                                navController = navController
-                            )
-                            ListComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
-                                },
-                                navController = navController
-                            )
-                            SlideComponentBanner(
-                                items = ads.value,
-                                isLoading = isLoading,
-                                onItemClick = { actionValue ->
-                                    Log.d("Banner Clicked", "Aksi: $actionValue")
-                                }
-                            )
-                            ListComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
-                                },
-                                navController = navController
-                            )
+
                         }
                         1 -> {
                             // Tab "Bookmark" - Konten berita yang di-bookmark

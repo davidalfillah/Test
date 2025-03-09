@@ -19,21 +19,25 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.navigation.NavHostController
 import com.example.test.R
+import com.example.test.ui.components.SlideButtonProductCategories
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentProduct
-import com.example.test.ui.components.SlideShoppingCategorys
 import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.products
+import com.example.test.ui.dataType.ProductCategory
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
+import com.example.test.ui.viewModels.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +45,15 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
     val ads = remember { mutableStateOf(emptyList<Ad>()) }
     val isLoading = remember { mutableStateOf(true) } // Status loading
     val adViewModel = AdViewModel()
+    val productViewModel = ProductViewModel()
+
+    var categories by remember { mutableStateOf<List<ProductCategory>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        productViewModel.fetchCategories { result ->
+            categories = result
+        }
+    }
 
     LaunchedEffect(Unit) {
         adViewModel.getAds { fetchedAds ->
@@ -92,12 +105,17 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
                         Log.d("Banner Clicked", "Aksi: $actionValue")
                     }
                 )
-                SlideShoppingCategorys(
-                    items = CategoryButtons.categoryButton,
+                SlideButtonProductCategories(
+                    items = categories,
                     onItemClick = { selectedCategory ->
                         println("Kategori dipilih: $selectedCategory")
                     },
-                    navController = navController
+                    navController = navController,
+                    title = "Kategori Produk",
+                    moreText = "Lihat Semua",
+                    moreTextClick = { selectedCategory ->
+                        navController.navigate("productCategories")
+                    }
                 )
                 SlideComponentProduct(
                     items = products,

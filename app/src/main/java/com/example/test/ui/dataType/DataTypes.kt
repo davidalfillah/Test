@@ -2,7 +2,6 @@ package com.example.test.ui.dataType
 
 import com.example.test.ui.screens.User
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.PropertyName
 
 data class Chat(
     val chatId: String = "",
@@ -106,6 +105,7 @@ data class BranchLocation(
 data class News(
     val id: String = "",
     val title: String = "",
+    val highlightedTitle: String? = null, // Ubah dari String? ke HighlightedString?
     val category: String = "",
     val content: List<NewsContent> = emptyList(), // Menggunakan NewsContent
     val thumbnailUrl: String = "",
@@ -113,7 +113,7 @@ data class News(
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null,
     val isFeatured: Boolean = false,
-    val viewCount: Int = 0,
+    val viewCount: Long = 0,
     val likes: Map<String, Boolean> = emptyMap(),
     val comments: List<String> = emptyList(),
     val commentCount: Int = 0,
@@ -143,6 +143,63 @@ data class Bookmark(
     val userId: String = "",
     val newsId: String = "",
     val createdAt: Timestamp = Timestamp.now()
+)
+
+data class Product(
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val categoryId: String = "",
+    val subcategoryId: String = "",
+    val price: Double = 0.0,
+    val discount: Double = 0.0, // Dalam persen
+    val stock: Int = 0,
+    val weight: Double = 0.0, // Dalam kg
+    val dimensions: Dimensions? = null,
+    val sellerId: String = "",
+    val createdAt: Timestamp = Timestamp.now(),
+    val updatedAt: Timestamp = Timestamp.now(),
+    val status: String = "active", // active, out_of_stock, discontinued
+    val rating: Double = 0.0, // Rata-rata rating dari ulasan
+    val soldCount: Int = 0 // Jumlah produk terjual
+)
+
+data class Dimensions(
+    val length: Double = 0.0,
+    val width: Double = 0.0,
+    val height: Double = 0.0
+)
+
+data class ProductMedia(
+    val id: String = "",
+    val url: String = "",
+    val type: String = "image" // "image" atau "video"
+)
+
+data class ProductVariant(
+    val id: String = "",
+    val name: String = "", // Contoh: "Merah - L"
+    val price: Double = 0.0,
+    val stock: Int = 0
+)
+
+data class ProductReview(
+    val id: String = "",
+    val userId: String = "",
+    val rating: Int = 0, // 1-5
+    val reviewText: String = "",
+    val createdAt: Timestamp = Timestamp.now()
+)
+
+data class ProductCategory(
+    val id: String = "",
+    val name: String = "",
+    val subcategories: List<Subcategory> = emptyList()
+)
+
+data class Subcategory(
+    val id: String = "",
+    val name: String = ""
 )
 
 

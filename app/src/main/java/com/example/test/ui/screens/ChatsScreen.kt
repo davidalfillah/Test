@@ -54,7 +54,6 @@ import com.example.test.R
 import com.example.test.ui.components.ChatItemComponent
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentProduct
-import com.example.test.ui.components.SlideShoppingCategorys
 import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
 import com.example.test.ui.dataTest.products
