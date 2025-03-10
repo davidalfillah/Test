@@ -107,6 +107,7 @@ dependencies {
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.paging.compose.android)
+    implementation(libs.androidx.runtime.livedata)
 
     val camerax_version = "1.1.0-beta01"
     implementation ("androidx.camera:camera-core:${camerax_version}")

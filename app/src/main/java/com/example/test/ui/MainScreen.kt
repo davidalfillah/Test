@@ -2,6 +2,7 @@ package com.example.test.ui
 
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,18 +51,23 @@ import com.example.test.AuthViewModel
 import com.example.test.DashboardScreen
 import com.example.test.R
 import com.example.test.setStatusBarColor
+import com.example.test.ui.dataType.Member
 import com.example.test.ui.screens.AboutGribScreen
 import com.example.test.ui.screens.AccountScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
 import com.example.test.ui.screens.CustomCamera
 import com.example.test.ui.screens.DigitalCardScreen
+import com.example.test.ui.screens.DokumenMemberScreen
 import com.example.test.ui.screens.DonationDetailScreen
 import com.example.test.ui.screens.DonationInputScreen
 import com.example.test.ui.screens.DonationScreen
 import com.example.test.ui.screens.FullscreenImageScreen
 import com.example.test.ui.screens.HomeKtaScreen
 import com.example.test.ui.screens.HomeScreen
+import com.example.test.ui.screens.KtpResult
+import com.example.test.ui.screens.KtpResultScreen
+import com.example.test.ui.screens.KtpScannerScreen
 import com.example.test.ui.screens.LoginScreen
 import com.example.test.ui.screens.MemberProfileScreen
 import com.example.test.ui.screens.NewsDetailScreen
@@ -75,12 +82,13 @@ import com.example.test.ui.screens.SearchScreen
 import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
-import com.example.test.ui.screens.UploadKtpScreen
-import com.example.test.ui.screens.saveBitmapToCache
+import com.example.test.ui.screens.TestKtpOcr
 import com.example.test.ui.viewModels.ChatViewModel
 import com.example.test.ui.viewModels.MemberViewModel
 import com.example.test.ui.viewModels.NewsViewModel
 import com.example.test.ui.viewModels.PaymentViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.gson.Gson
 
 //Email : hellogrib430@gmail.com
 //Pass : Hell0@#$
@@ -92,6 +100,9 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: "home"
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val auth = FirebaseAuth.getInstance()
+    var isAuthenticated by remember { mutableStateOf(auth.currentUser != null) }
+    val memberViewModel: MemberViewModel = viewModel()
 
     setStatusBarColor(
         color = when (currentRoute) {
@@ -144,6 +155,10 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     navController,
                     NewsViewModel()
                 )
+            }
+
+            composable("testOcr") {
+                TestKtpOcr()
             }
 
             composable("productCategories") {
@@ -227,7 +242,6 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 CustomCamera(navController) { capturedBitmap ->
                     val context = navController.context
                     var bitmap = capturedBitmap
-                    var imageUri = saveBitmapToCache(context, capturedBitmap)
                 }
             }
             composable("donation_input/{title}") { backStackEntry ->
@@ -270,10 +284,20 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 )
             }
             composable("status") { StatusScreen(navController) }
-            composable("biodataMember/{memberJson}") { backStackEntry ->
-                val memberJson = backStackEntry.arguments?.getString("memberJson") ?: ""
+            composable("biodataMember/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
                 MemberProfileScreen(
-                    navController = navController, memberJson, paddingValues = PaddingValues
+                    navController = navController,
+                    paddingValues = PaddingValues,
+                    userId = userId
+                )
+            }
+            composable("dokumenMember/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                DokumenMemberScreen(
+                    navController = navController,
+                    paddingValues = PaddingValues,
+                    userId = userId
                 )
             }
             composable("homeKta/{userId}") { backStackEntry ->
@@ -284,38 +308,48 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     userId = userId
                 )
             }
-            composable("uploadKtp") {
-                UploadKtpScreen(
-                    navController,
-                    MemberViewModel()
+
+            composable("digitalCard/{userId}") { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                DigitalCardScreen(
+                    navController = navController,
+                    paddingValues = PaddingValues,
+                    userId = userId,
                 )
             }
 
-            composable(
-                "registerGrib?nik={nik}&name={name}&address={address}&imageUrl={imageUrl}&birthDate={birthDate}",
-                arguments = listOf(
-                    navArgument("nik") { defaultValue = "" },
-                    navArgument("name") { defaultValue = "" },
-                    navArgument("address") { defaultValue = "" },
-                    navArgument("imageUrl") { nullable = true },
-                    navArgument("birthDate") { defaultValue = "" }
-                )
-            ) { backStackEntry ->
-                val nik = backStackEntry.arguments?.getString("nik") ?: ""
-                val name = backStackEntry.arguments?.getString("name") ?: ""
-                val address = backStackEntry.arguments?.getString("address") ?: ""
-                val imageUrl = backStackEntry.arguments?.getString("imageUrl")
-                val birthDate = backStackEntry.arguments?.getString("birthDate") ?: ""
 
+            composable("uploadKtp") {
+                KtpScannerScreen { result ->
+                    navController.navigate("result") {
+                        popUpTo("scanner") { inclusive = true }
+                        launchSingleTop = true
+                        with(result) {
+                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                "ktpResult",
+                                result
+                            )
+                        }
+                    }
+                }
+            }
+            composable("result") {
+                val result = navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<KtpResult>("ktpResult")
+                result?.let { KtpResultScreen(it) } ?: run {
+                    Text("No result available", modifier = Modifier.fillMaxSize())
+                }
+            }
+
+            composable(
+                "registerGrib",
+            ) { backStackEntry ->
                 RegistrationScreen(
                     paddingValues = PaddingValues,
                     navController = navController,
                     authViewModel = authViewModel,
-                    nik = nik,
-                    fullName = name,
-                    street = address,
-                    imageUrl = imageUrl,
-                    birthDate = birthDate
+                    memberViewModel = MemberViewModel(),
                 )
             }
             composable("registerUmkm") {
@@ -352,14 +386,6 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
             composable("chat_detail/{chatId}") { backStackEntry ->
                 val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
                 ChatDetailScreen(navController, ChatViewModel(), authViewModel, chatId)
-            }
-            composable("digitalCard/{member}") { backStackEntry ->
-                val memberData = backStackEntry.arguments?.getString("member") ?: ""
-                DigitalCardScreen(
-                    navController = navController,
-                    memberData = memberData,
-                    onBackClick = { navController.popBackStack() }
-                )
             }
             composable(
                 "otp_screen/{phoneNumber}",

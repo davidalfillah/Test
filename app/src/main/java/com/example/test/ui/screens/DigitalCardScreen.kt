@@ -1,6 +1,7 @@
 package com.example.test.ui.screens
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -10,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,7 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,30 +50,41 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.R
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.Member
+import com.example.test.ui.viewModels.MemberViewModel
 import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DigitalCardScreen(
-    navController: NavController,
-    memberData: String,
-    onBackClick: () -> Unit
+    navController: NavHostController,
+    paddingValues: PaddingValues,
+    userId: String,
+    memberViewModel: MemberViewModel = viewModel()
 ) {
-    val member = try {
-        Gson().fromJson(Uri.decode(memberData), Member::class.java)
-    } catch (e: Exception) {
-        null
-    }
-
+    var isLoading by remember { mutableStateOf(true) }
+    var member by remember { mutableStateOf<Member?>(null) }
     var branch by remember { mutableStateOf<Branch?>(null) }
+
+    LaunchedEffect(userId) {
+        memberViewModel.fetchMember(userId) { fetchedMember, fetchedBranch ->
+            member = fetchedMember
+            branch = fetchedBranch
+            isLoading = false
+        }
+    }
 
     // State untuk kontrol rotasi kartu
     var isFront by remember { mutableStateOf(true) }
@@ -81,11 +97,21 @@ fun DigitalCardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Kartu Digital") },
+                colors = TopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                ),
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
                     }
-                }
+                },
             )
         }
     ) { innerPadding ->
@@ -96,42 +122,59 @@ fun DigitalCardScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
-            if (member != null) {
-                Card(
-                    modifier = Modifier
-                        .width(300.dp)
-                        .height(480.dp)
-                        .graphicsLayer {
-                            rotationY = rotation.value
-                            cameraDistance = 12f * density
-                        }
-                        .clickable { isFront = !isFront },
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize()
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Teks di atas kartu
+                if(member != null) {
+                    Text(
+                        text = "Tap Kartu untuk melihat sebaliknya",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                if (member != null) {
+                    Card(
+                        modifier = Modifier
+                            .width(300.dp)
+                            .height(480.dp)
+                            .graphicsLayer {
+                                rotationY = rotation.value
+                                cameraDistance = 12f * density
+                            }
+                            .clickable { isFront = !isFront },
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        if (rotation.value <= 90f) {
-                            // Depan Kartu
-                            FrontCard(member = member)
-                        } else {
-                            // Belakang Kartu
-                            BackCard(member = member)
+                        Box(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (rotation.value <= 90f) {
+                                // Depan Kartu
+                                FrontCard(member = member!!)
+                            } else {
+                                // Belakang Kartu
+                                BackCard(member = member!!)
+                            }
                         }
                     }
+                } else {
+                    CircularProgressIndicator()
                 }
-            } else {
-                CircularProgressIndicator()
             }
         }
+
     }
 }
 
 @Composable
 fun FrontCard(member: Member) {
     var branch by remember { mutableStateOf<Branch?>(null) }
+    Log.d("FotoURL", "URL Foto: ${member.fotoUrl}")
+    val decodedUrl = Uri.decode(member.fotoUrl)
 
+    Log.d("FotoURLDecode", "URL Foto: ${decodedUrl}")
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -172,35 +215,29 @@ fun FrontCard(member: Member) {
             // Header dengan Logo dan Tulisan
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Color.White.copy(alpha = 0.95f),
-                        shape = RoundedCornerShape(12.dp)
-                    ),
+                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(R.drawable.grib_03),
+                    painter = painterResource(R.drawable.logo_grib),
                     contentDescription = "Logo Organisasi",
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        .size(70.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "Kartu Anggota",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = "KARTU ANGGOTA",
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "GRIB JAYA",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Blue
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
@@ -220,13 +257,11 @@ fun FrontCard(member: Member) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Foto Member
                         Box(
                             modifier = Modifier
                                 .width(140.dp)
-                                .height(200.dp)
+                                .height(180.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.LightGray)
                                 .border(
                                     width = 4.dp,
                                     brush = Brush.linearGradient(
@@ -236,14 +271,17 @@ fun FrontCard(member: Member) {
                                         )
                                     ),
                                     shape = RoundedCornerShape(8.dp)
-                                )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Foto Formal",
-                                modifier = Modifier.align(Alignment.Center),
-                                color = Color.White,
-                                textAlign = TextAlign.Center
+
+                            AsyncImage(
+                                model = member.fotoUrl,
+                                contentDescription = "Profile Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
                             )
+
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -306,21 +344,44 @@ fun FrontCard(member: Member) {
 
 @Composable
 fun CardInfoItem(label: String, value: String) {
-    Column(
+    val annotatedString = buildAnnotatedString {
+        var currentIndex = 0
+        val boldPattern = Regex("""\*\*(.*?)\*\*""")
+        val matches = boldPattern.findAll(value)
+
+        matches.forEach { match ->
+            // Teks sebelum teks bold
+            append(value.substring(currentIndex, match.range.first))
+
+            // Teks bold
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(match.groupValues[1])
+            }
+
+            // Update indeks
+            currentIndex = match.range.last + 1
+        }
+
+        // Teks setelah teks bold (jika ada)
+        if (currentIndex < value.length) {
+            append(value.substring(currentIndex))
+        }
+    }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(vertical = 2.dp),
     ) {
         Text(
             text = label,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = value,
+            text = annotatedString,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onPrimary,
-            textAlign = TextAlign.Center
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground,
         )
     }
 }
@@ -334,7 +395,7 @@ fun BackCard(member: Member) {
                 Color.White
             )
             .graphicsLayer {
-                rotationY = 180f // Membalik tampilan agar teks tidak terbalik
+                rotationY = 180f
             }
     ) {
         Column(
@@ -344,43 +405,55 @@ fun BackCard(member: Member) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(R.drawable.grib_03),
+                painter = painterResource(R.drawable.logo_grib),
                 contentDescription = "Logo Organisasi",
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    .size(80.dp)
             )
             Text(
-                text = "Detail Member",
-                style = MaterialTheme.typography.titleLarge,
+                text = "KARTU TANDA ANGGOTA \n" + "GRIB JAYA",
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondary,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            CardInfoItem("NIK", member.nik)
-            CardInfoItem("Jenis Kelamin", member.gender)
-            CardInfoItem("Agama", member.religion)
-            CardInfoItem("Alamat", member.address.street)
-            CardInfoItem("Kota", member.address.city)
+            CardInfoItem("1.", "Pemegang Kartu ini adalah **Anggota terdaftar** e-KTA Grib Jaya")
+            CardInfoItem("2.", "Kartu ini adalah **Identitas Resmi** dari Anggota Grib Jaya")
+            CardInfoItem("3.", "**Dilarang** menggunakan kartu ini dalam kegiatan yang melanggar hukum")
+            CardInfoItem("4.", "Jika menemukan kartu ini harap dikembalikan ke:")
+            CardInfoItem("", "Sekertariat DPP Grib Jaya")
+            CardInfoItem("", "Jl. ")
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Bisa tambahkan QR Code di sini
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(Color.White)
-                    .align(Alignment.CenterHorizontally)
-            ) {
-                Text(
-                    text = "QR Code",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.Black
-                )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column{
+                    Text(text = "Scan disini", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = Color.Black)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .background(Color.Blue)
+                    ) {
+                        Text(
+                            text = "QR Code",
+                            modifier = Modifier.align(Alignment.Center),
+                            color = Color.Black
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    Text(text = "DEWAN PEMIMPIN PUSAT", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = Color.Black)
+                    Text(text = "KETUA UMUM", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = Color.Black)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(text = "HERCULES ROSARIO MARSHAL", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, color = Color.Black)
+                }
             }
         }
     }

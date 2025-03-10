@@ -43,6 +43,7 @@ import androidx.navigation.NavHostController
 import com.example.test.ui.MainScreen
 import com.example.test.ui.screens.User
 import com.example.test.ui.theme.TestTheme
+import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseException
 import com.google.firebase.Timestamp
 import com.google.firebase.appcheck.FirebaseAppCheck
@@ -510,11 +511,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         try {
-            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
-//            val firebaseAppCheck = FirebaseAppCheck.getInstance()
-//            firebaseAppCheck.installAppCheckProviderFactory(
-//                DebugAppCheckProviderFactory.getInstance()
-//            )
+            FirebaseApp.initializeApp(this)
+            val firebaseAppCheck = FirebaseAppCheck.getInstance()
+            // Gunakan DebugAppCheckProvider untuk mode debug
+            firebaseAppCheck.installAppCheckProviderFactory(
+                DebugAppCheckProviderFactory.getInstance()
+            )
         } catch (e: DatabaseException) {
             Log.e("Firebase", "Persistence sudah diaktifkan sebelumnya")
         }

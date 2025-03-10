@@ -42,22 +42,40 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.Member
 import com.example.test.ui.viewModels.MemberViewModel
 import com.google.gson.Gson
+import java.sql.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberProfileScreen(navController: NavController, memberData: String, paddingValues: PaddingValues) {
+fun MemberProfileScreen(
+    navController: NavController,
+                        paddingValues: PaddingValues,
+                        userId: String,
+    memberViewModel: MemberViewModel = viewModel()
+) {
     val context = LocalContext.current
-    val member = try {
-        Gson().fromJson(Uri.decode(memberData), Member::class.java)
-    } catch (e: Exception) {
-        null
-    }
+    var isLoading by remember { mutableStateOf(true) }
+    var member by remember { mutableStateOf<Member?>(null) }
     var branch by remember { mutableStateOf<Branch?>(null) }
+
+
+
+
+    LaunchedEffect(userId) {
+        memberViewModel.fetchMember(userId) { fetchedMember, fetchedBranch ->
+            member = fetchedMember
+            branch = fetchedBranch
+            isLoading = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -86,7 +104,6 @@ fun MemberProfileScreen(navController: NavController, memberData: String, paddin
                 .verticalScroll(rememberScrollState())
         ) {
             if (member != null) {
-                // Header dengan nama
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -102,13 +119,13 @@ fun MemberProfileScreen(navController: NavController, memberData: String, paddin
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = member.fullName,
+                            text = member!!.fullName,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "ID Anggota: ${member.memberId}",
+                            text = "ID Anggota: ${member!!.memberId}",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
@@ -117,24 +134,24 @@ fun MemberProfileScreen(navController: NavController, memberData: String, paddin
 
                 // Informasi Pribadi
                 ProfileSection(title = "Informasi Pribadi") {
-                    ProfileItem("Jabatan", member.jobTitle)
-                    ProfileItem("NIK", member.nik)
-                    ProfileItem("Tanggal Lahir", member.birthDate)
-                    ProfileItem("Jenis Kelamin", member.gender)
-                    ProfileItem("Agama", member.religion)
-                    ProfileItem("Pendidikan", member.education)
-                    ProfileItem("Pekerjaan", member.job)
+                    ProfileItem("Jabatan", member!!.jobTitle)
+                    ProfileItem("NIK", member!!.nik)
+                    ProfileItem("Tanggal Lahir", timestampToDateString(member!!.birthDate))
+                    ProfileItem("Jenis Kelamin", member!!.gender)
+                    ProfileItem("Agama", member!!.religion)
+                    ProfileItem("Pendidikan", member!!.education)
+                    ProfileItem("Pekerjaan", member!!.job)
                 }
 
                 // Informasi Alamat
                 ProfileSection(title = "Alamat") {
                     ProfileItem(
                         "Alamat Lengkap",
-                        "${member.address.street}, ${member.address.village}, " +
-                                "${member.address.subDistrict}, ${member.address.city}, " +
-                                "${member.address.province}"
+                        "${member!!.address.street}, ${member!!.address.village}, " +
+                                "${member!!.address.subDistrict}, ${member!!.address.city}, " +
+                                member!!.address.province
                     )
-                    ProfileItem("Kode Pos", member.address.postalCode)
+                    ProfileItem("Kode Pos", member!!.address.postalCode)
                 }
 
                 // Informasi Cabang
@@ -145,16 +162,21 @@ fun MemberProfileScreen(navController: NavController, memberData: String, paddin
                 }
             } else {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                    Text(
-                        "Memuat data...",
-                        modifier = Modifier.padding(top = 16.dp),
-                        textAlign = TextAlign.Center
-                    )
+                ){
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            "Memuat data...",
+                            modifier = Modifier.padding(top = 16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -215,4 +237,10 @@ fun ProfileItem(
             textAlign = TextAlign.End
         )
     }
+}
+
+fun timestampToDateString(timestamp: com.google.firebase.Timestamp): String {
+    val date = Date(timestamp.seconds * 1000)
+    val format = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID")) // Format tanggal Indonesia
+    return format.format(date)
 }

@@ -71,6 +71,7 @@ import com.example.test.ui.dataTest.categories
 import com.example.test.ui.dataTest.products
 import com.example.test.ui.dataTest.subcategories
 import com.example.test.ui.dataType.News
+import com.example.test.ui.dataType.NewsContent
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
 import com.example.test.ui.viewModels.NewsViewModel
@@ -79,6 +80,7 @@ import com.example.test.ui.viewModels.images
 import com.example.test.ui.viewModels.product
 import com.example.test.ui.viewModels.variants
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 
@@ -356,7 +358,9 @@ fun HomeScreen(
                                 }
                                 Column {
                                     Button(
-                                        onClick = { },
+                                        onClick = {
+                                            navController.navigate("uploadKtp")
+                                        },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = Color.White
@@ -397,7 +401,7 @@ fun HomeScreen(
                                                         if (isMember) {
                                                             navController.navigate("homeKta/${it.uid}")
                                                         } else {
-                                                            navController.navigate("uploadKtp")
+                                                            navController.navigate("registerGrib")
                                                         }
                                                     }
                                                 }
@@ -437,19 +441,19 @@ fun HomeScreen(
                         }
                     }
                 }
-                Button(
-                    onClick = {
-                        val product = product
-                        val images = images
-                        val variants = variants
-                        val productViewModel = ProductViewModel()
-
-                        productViewModel.addProductToFirestore(product, images, variants)
+//                Button(
+//                    onClick = {
+//                        val product = product
+//                        val images = images
+//                        val variants = variants
+//                        val productViewModel = ProductViewModel()
+//
+//                        productViewModel.addProductToFirestore(product, images, variants)
 //
 //                        newsViewModel.migrateNewsData()
 //                        val user = FirebaseAuth.getInstance().currentUser
 //                        val sampleNews = News(
-//                            title = "Hercules Bakal Siapkan 10 Ribu Kader GRIB Jaya Sambut Pelantikan Prabowo",
+//                            title = "Ketum GRIB Jaya H. Hercules Hadiri Deklarasi Pelantikan DPC GRIB Bandung",
 //                            category = "Umum",
 //                            content = listOf(
 //                                // Konten Teks
@@ -480,7 +484,7 @@ fun HomeScreen(
 //                                    caption = "Gambar pemandangan indah"
 //                                ),
 //                            ),
-//                            thumbnailUrl = "https://sinpo.id/storage/2024/08/hercules-bakal-siapkan-10-ribu-kader-grib-jaya-sambut-pelantikan-prabowo-17082024-183011.jpg",
+//                            thumbnailUrl = "https://reportaseinvestigasi.com/wp-content/uploads/2025/01/IMG-20250115-WA0099.jpg",
 //                            author = User(
 //                                uid = user?.uid ?: "anonymous",
 //                                name = "Redaksi Grib"
@@ -495,12 +499,12 @@ fun HomeScreen(
 //                                error = errorMsg
 //                            }
 //                        )
-                    },
-                    modifier = Modifier
-                        .padding(16.dp)
-                ) {
-                    Text("Tambah Berita Contoh")
-                }
+//                    },
+//                    modifier = Modifier
+//                        .padding(16.dp)
+//                ) {
+//                    Text("Tambah Berita Contoh")
+//                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -533,24 +537,29 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
-                                contentDescription = "Logo",
-                                modifier = Modifier.size(80.dp)
-                            )
-                            Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(model = R.drawable.logo_grib),
+                                    contentDescription = "Logo",
+                                    modifier = Modifier.size(80.dp)
+                                )
+                                Column {
 
-                                Text(
-                                    text = "Kamu udah tau apa itu GRIB?",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 13.sp,
-                                    text = "Yuk cari tahu tentang GRIB"
-                                )
+                                    Text(
+                                        text = "Tentang GRIB?",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        lineHeight = 13.sp,
+                                        text = "Yuk cari tahu tentang GRIB"
+                                    )
+                                }
                             }
                             Image(
                                 painter = painterResource(id = R.drawable.baseline_arrow_forward_ios_24),

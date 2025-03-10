@@ -1,6 +1,7 @@
 package com.example.test.ui.screens
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import com.example.test.R
 import com.example.test.ui.components.SlideComponentBanner
@@ -86,8 +89,7 @@ fun HomeKtaScreen(
     val items = listOf(
         "KTA Digital" to R.drawable.baseline_card_membership_24,
         "Biodata" to R.drawable.baseline_person_24,
-        "Sertifkat" to R.drawable.baseline_description_24,
-        "KTP" to R.drawable.baseline_credit_card_24,
+        "Dokumen" to R.drawable.baseline_description_24,
     )
 
     val columns = 3
@@ -100,6 +102,8 @@ fun HomeKtaScreen(
             isLoading = false
         }
     }
+
+    Log.d("HomeKtaScreen", "Member: ${member?.fotoUrl}")
 
     Scaffold(
         topBar = {
@@ -156,11 +160,13 @@ fun HomeKtaScreen(
                             .background(Color.LightGray),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.baseline_person_24),
-                            contentDescription = "Default Profile",
-                            colorFilter = ColorFilter.tint(Color.Gray),
-                            modifier = Modifier.fillMaxSize()
+                        AsyncImage(
+                            model = member?.fotoUrl,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+
                         )
                     }
                     Spacer(Modifier.height(16.dp))
@@ -191,17 +197,15 @@ fun HomeKtaScreen(
                                 .clickable {
                                     when (label) {
                                         "KTA Digital" -> {
-                                            val memberJson = Uri.encode(Gson().toJson(member))
-                                            navController.navigate("digitalCard/$memberJson")
+                                            navController.navigate("digitalCard/$userId")
+
                                         }
 
                                         "Biodata" -> {
-                                            val memberJson = Uri.encode(Gson().toJson(member))
-                                            navController.navigate("biodataMember/$memberJson")
+                                            navController.navigate("biodataMember/$userId")
                                         }
 
-                                        "Sertifkat" -> navController.navigate("uploadKtp")
-                                        "KTP" -> navController.navigate("donation")
+                                        "Dokumen" -> navController.navigate("dokumenMember/$userId")
                                     }
                                 }
                         ) {

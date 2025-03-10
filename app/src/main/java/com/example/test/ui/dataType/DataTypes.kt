@@ -49,7 +49,7 @@ data class Member(
     val memberId: String = "",
     val fullName: String = "",
     val nik: String = "",
-    val birthDate: String = "",
+    val birthDate: Timestamp = Timestamp.now(),
     val gender: String = "",
     val religion: String = "",
     val education: String = "",
@@ -63,6 +63,8 @@ data class Member(
     val status: String = "active",
     val createdAt: Timestamp = Timestamp.now(),
     val umkmIds: List<String> = emptyList(),
+    val fotoUrl: String? = "",
+    val ktpUrl: String? = ""
 )
 
 data class Umkm(

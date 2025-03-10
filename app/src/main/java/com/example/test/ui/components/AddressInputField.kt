@@ -1,5 +1,6 @@
 package com.example.test.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,11 @@ import com.example.test.ui.dataTest.villages
 @Composable
 fun CustomDropdown(
     label: String,
+    description: String? = null,
+    required: Boolean = false,
+    disabled: Boolean = false,
+    showLabel: Boolean = true,
+    errorMessage: String? = "",
     options: List<String>,
     selectedValue: String,
     onSelected: (String) -> Unit
@@ -50,13 +58,51 @@ fun CustomDropdown(
     var searchText by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 4.dp))
-
+        if (showLabel) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                if (required) {
+                    Text(
+                        text = " *",
+                        color = Color.Red,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        if (description != null) {
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { showSheet = true }
-                .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                .then(
+                    if (!disabled) Modifier.clickable { showSheet = true }
+                    else Modifier
+                )
+                .border(
+                    width = 1.dp,
+                    color = if (errorMessage.isNullOrEmpty()) {
+                        if (disabled) Color.LightGray else Color.Gray
+                    } else {
+                        Color.Red
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .background(
+                    color = if (disabled) Color.LightGray.copy(alpha = 0.3f) else Color.Transparent
+                )
+
                 .padding(16.dp)
         ) {
             Row(
@@ -65,16 +111,40 @@ fun CustomDropdown(
             ) {
                 Text(
                     text = selectedValue.ifEmpty { "Pilih $label" },
-                    color = if (selectedValue.isEmpty()) Color.Gray else Color.Black
+                    color = when {
+                        disabled -> Color.Gray
+                        selectedValue.isEmpty() -> Color.LightGray
+                        else -> Color.Black
+                    },
+                    fontWeight = FontWeight.Normal
                 )
-                Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
+
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Dropdown",
+                    tint = if (errorMessage.isNullOrEmpty()) {
+                        if (disabled) Color.Gray else Color.Black
+                    } else {
+                        Color.Red
+                    },
+                )
             }
+        }
+        // Tampilkan pesan error jika ada
+        if (!errorMessage.isNullOrEmpty()) {
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 
     if (showSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showSheet = false }
+            onDismissRequest = { showSheet = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 TextField(
@@ -112,6 +182,7 @@ fun CustomDropdown(
 
 
 
+
 @Composable
 fun AddressInputField(
     selectedProvince: String,
@@ -121,13 +192,19 @@ fun AddressInputField(
     onProvinceSelected: (String) -> Unit,
     onCitySelected: (String) -> Unit,
     onSubDistrictSelected: (String) -> Unit,
-    onVillageSelected: (String) -> Unit
+    onVillageSelected: (String) -> Unit,
+    errorMessageProvince: String? = null,
+    errorMessageCity: String? = null,
+    errorMessageSubDistrict: String? = null,
+    errorMessageVillage: String? = null
 ) {
     Column {
         CustomDropdown(
             label = "Provinsi",
             options = provinces,
+            required = true,
             selectedValue = selectedProvince,
+            errorMessage = errorMessageProvince,
             onSelected = { province ->
                 onProvinceSelected(province)
                 onCitySelected("") // Reset pilihan di bawahnya
@@ -135,43 +212,46 @@ fun AddressInputField(
                 onVillageSelected("")
             }
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        if (selectedProvince.isNotEmpty()) {
-            CustomDropdown(
-                label = "Kota/Kabupaten",
-                options = cities[selectedProvince] ?: emptyList(),
-                selectedValue = selectedCity,
-                onSelected = { city ->
-                    onCitySelected(city)
-                    onSubDistrictSelected("")
-                    onVillageSelected("")
-                }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        CustomDropdown(
+            label = "Kota/Kabupaten",
+            options = cities[selectedProvince] ?: emptyList(),
+            selectedValue = selectedCity,
+            required = true,
+            errorMessage = errorMessageCity,
+            disabled = selectedProvince.isEmpty(),
+            onSelected = { city ->
+                onCitySelected(city)
+                onSubDistrictSelected("")
+                onVillageSelected("")
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
-        if (selectedCity.isNotEmpty()) {
-            CustomDropdown(
-                label = "Kecamatan",
-                options = subDistricts[selectedCity] ?: emptyList(),
-                selectedValue = selectedSubDistrict,
-                onSelected = { subDistrict ->
-                    onSubDistrictSelected(subDistrict)
-                    onVillageSelected("")
-                }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        CustomDropdown(
+            label = "Kecamatan",
+            options = subDistricts[selectedCity] ?: emptyList(),
+            selectedValue = selectedSubDistrict,
+            required = true,
+            errorMessage = errorMessageSubDistrict,
+            disabled = selectedCity.isEmpty(),
+            onSelected = { subDistrict ->
+                onSubDistrictSelected(subDistrict)
+                onVillageSelected("")
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
-        if (selectedSubDistrict.isNotEmpty()) {
-            CustomDropdown(
-                label = "Kelurahan/Desa",
-                options = villages[selectedSubDistrict] ?: emptyList(),
-                selectedValue = selectedVillage,
-                onSelected = { onVillageSelected(it) }
-            )
-        }
+        CustomDropdown(
+            label = "Kelurahan/Desa",
+            options = villages[selectedSubDistrict] ?: emptyList(),
+            selectedValue = selectedVillage,
+            required = true,
+            errorMessage = errorMessageVillage,
+            disabled = selectedSubDistrict.isEmpty(),
+            onSelected = { onVillageSelected(it) }
+        )
     }
 }
 

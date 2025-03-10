@@ -100,6 +100,18 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
                 isLoading = false
             }
         )
+        newsViewModel.fetchBookmarkedNews(
+            onLoading = { isLoading = true },
+            onSuccess = { bookmarkNews ->
+                bookmarkedNewsList = bookmarkNews
+                isLoading = false
+                error = null
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+                isLoading = false
+            }
+        )
     }
 
     LaunchedEffect(Unit) {
