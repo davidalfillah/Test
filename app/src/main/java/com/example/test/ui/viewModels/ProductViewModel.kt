@@ -1,48 +1,26 @@
 package com.example.test.ui.viewModels
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.example.test.ui.dataType.Dimensions
 import com.example.test.ui.dataType.Product
 import com.example.test.ui.dataType.ProductCategory
 import com.example.test.ui.dataType.ProductMedia
 import com.example.test.ui.dataType.ProductVariant
 import com.example.test.ui.dataType.Subcategory
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
-
-val product = Product(
-    id = "productId1",
-    name = "Smartphone XYZ",
-    description = "Smartphone dengan kamera 108MP",
-    categoryId = "electronics",
-    subcategoryId = "smartphones",
-    price = 5999000.0,
-    discount = 10.0,
-    stock = 50,
-    weight = 0.5,
-    dimensions = Dimensions(15.0, 7.5, 0.8),
-    sellerId = "seller123",
-    createdAt = Timestamp.now(),
-    updatedAt = Timestamp.now(),
-    status = "active",
-    rating = 4.5,
-    soldCount = 100
-)
-
-val images = listOf(
-    ProductMedia(id = "media1", url = "https://example.com/image1.jpg", type = "image"),
-    ProductMedia(id = "media2", url = "https://example.com/image2.jpg", type = "image"),
-    ProductMedia(id = "media3", url = "https://example.com/video.mp4", type = "video")
-)
-
-val variants = listOf(
-    ProductVariant(id = "variant1", name = "Hitam - XL", price = 5999000.0, stock = 10),
-    ProductVariant(id = "variant2", name = "Putih - L", price = 5999000.0, stock = 15)
-)
+import com.google.firebase.firestore.Query
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 class ProductViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private val productsCollection = db.collection("products")
 
     fun fetchCategories(callback: (List<ProductCategory>) -> Unit) {
         db.collection("productCategories")
@@ -108,39 +86,377 @@ class ProductViewModel : ViewModel() {
             }
     }
 
-
-
-    fun addProductToFirestore(product: Product, images: List<ProductMedia>, variants: List<ProductVariant>) {
-        val firestore = FirebaseFirestore.getInstance()
-        val productRef = firestore.collection("products").document() // Auto-generate ID
-        val productId = productRef.id
-
-        // Simpan produk dengan ID yang di-generate
-        val productWithId = product.copy(id = productId)
-        productRef.set(productWithId)
-            .addOnSuccessListener {
-                Log.d("Firestore", "Produk berhasil ditambahkan dengan ID: $productId")
-
-                // Upload Media (ID Otomatis)
-                images.forEach { media ->
-                    val mediaRef = productRef.collection("media").document() // Auto-generate ID
-                    val mediaWithId = media.copy(id = mediaRef.id)
-                    mediaRef.set(mediaWithId)
-                }
-
-                // Upload Variants (ID Otomatis)
-                variants.forEach { variant ->
-                    val variantRef = productRef.collection("variants").document() // Auto-generate ID
-                    val variantWithId = variant.copy(id = variantRef.id)
-                    variantRef.set(variantWithId)
-                }
-
+    fun fetchSubcategories(categoryId: String, callback: (List<Subcategory>) -> Unit) {
+        db.collection("productCategories")
+            .document(categoryId)
+            .collection("subcategories")
+            .get()
+            .addOnSuccessListener { subDocs ->
+                val subcategories = subDocs.map { subDoc ->
+                    Subcategory(
+                        id = subDoc.id,
+                        name = subDoc.getString("name") ?: ""
+                    )
+                }.toList()
+                callback(subcategories)
             }
-            .addOnFailureListener {
-                Log.e("Firestore", "Gagal menambahkan produk", it)
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Gagal mengambil subkategori", e)
+                callback(emptyList())
             }
     }
 
+    suspend fun addProduct(product: Product, mediaUris: List<Uri>): Result<String> {
+        return try {
+            val storage = FirebaseStorage.getInstance()
+            val mediaRefs = mutableListOf<ProductMedia>()
+            val productId = UUID.randomUUID().toString()
+            val timestamp = Timestamp.now()
+
+            // Upload media files
+            var thumbnailUrl = "" // Untuk menyimpan URL thumbnail
+
+            // Upload dan proses media
+            mediaUris.mapIndexed { index, uri ->
+                val mediaId = UUID.randomUUID().toString()
+                val mediaRef = storage.reference.child("products/$productId/$mediaId")
+
+                mediaRef.putFile(uri).await()
+                val downloadUrl = mediaRef.downloadUrl.await().toString()
+
+                val media = ProductMedia(
+                    id = mediaId,
+                    url = downloadUrl,
+                    type = if (uri.toString().endsWith(".mp4")) "video" else "image",
+                    timestamp = timestamp
+                )
+
+                // Simpan media reference
+                db.collection("products")
+                    .document(productId)
+                    .collection("media")
+                    .document(mediaId)
+                    .set(media)
+                    .await()
+
+                mediaRefs.add(media)
+
+                // Gunakan media pertama sebagai thumbnail
+                if (index == 0) {
+                    thumbnailUrl = downloadUrl
+                }
+            }
+
+            // Create product dengan thumbnail
+            val productWithDetails = product.copy(
+                id = productId,
+                thumbnail = thumbnailUrl, // Tambahkan thumbnail URL
+                createdAt = timestamp,
+                updatedAt = timestamp
+            )
+
+            // Simpan data produk
+            db.collection("products")
+                .document(productId)
+                .set(productWithDetails)
+                .await()
+
+            // Proses variants
+            product.variants.map { variant ->
+                val variantId = UUID.randomUUID().toString()
+                val variantWithId = variant.copy(id = variantId)
+
+                db.collection("products")
+                    .document(productId)
+                    .collection("variants")
+                    .document(variantId)
+                    .set(variantWithId)
+                    .await()
+            }
+
+            Result.success(productId)
+        } catch (e: Exception) {
+            Log.e("ProductViewModel", "Error adding product: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    fun fetchProductsByLocation(
+        userLat: Double,
+        userLong: Double,
+        maxDistance: Double = 10.0, // dalam kilometer
+        onSuccess: (List<Product>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        productsCollection
+            .get()
+            .addOnSuccessListener { documents ->
+                try {
+                    val products = documents.mapNotNull { doc ->
+                        doc.toObject(Product::class.java)
+                    }
+
+                    // Hitung jarak dan filter produk
+                    val filteredAndSortedProducts = products
+                        .map { product ->
+                            // Hitung jarak antara user dan produk
+                            val distance = calculateDistance(
+                                userLat, userLong,
+                                product.location.latitude,
+                                product.location.longitude
+                            )
+                            Pair(product, distance)
+                        }
+                        .filter { (_, distance) ->
+                            distance <= maxDistance // Filter berdasarkan jarak maksimum
+                        }
+                        .sortedBy { (_, distance) ->
+                            distance // Urutkan berdasarkan jarak terdekat
+                        }
+                        .map { (product, _) -> product }
+
+                    onSuccess(filteredAndSortedProducts)
+                } catch (e: Exception) {
+                    onError(e.message ?: "Terjadi kesalahan")
+                }
+            }
+            .addOnFailureListener { e ->
+                onError(e.message ?: "Gagal mengambil data produk")
+            }
+    }
+
+    // Fungsi untuk menghitung jarak menggunakan formula Haversine
+    private fun calculateDistance(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Double {
+        val r = 6371 // radius bumi dalam kilometer
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return r * c
+    }
+
+    // Fungsi untuk mendapatkan produk dengan pagination dan filter lokasi
+    fun fetchProductsByLocationPaginated(
+        userLat: Double,
+        userLong: Double,
+        maxDistance: Double = 10.0,
+        lastProduct: Product? = null,
+        pageSize: Long = 10,
+        onSuccess: (List<Product>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        var query = productsCollection
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(pageSize)
+
+        if (lastProduct != null) {
+            query = query.startAfter(lastProduct.createdAt)
+        }
+
+        query.get()
+            .addOnSuccessListener { documents ->
+                try {
+                    // Membuat list untuk menyimpan semua Future
+                    val productFutures = documents.mapNotNull { doc ->
+                        val product = doc.toObject(Product::class.java)
+                        // Ambil media untuk setiap produk
+                        doc.reference.collection("media")
+                            .limit(1) // Ambil hanya 1 media untuk thumbnail
+                            .get()
+                            .continueWith { mediaSnapshot ->
+                                if (!mediaSnapshot.isSuccessful) {
+                                    return@continueWith product
+                                }
+
+                                val media = mediaSnapshot.result?.documents?.firstOrNull()
+                                    ?.toObject(ProductMedia::class.java)
+
+                                // Update product dengan thumbnail dari media pertama
+                                if (media != null) {
+                                    product.copy(thumbnail = media.url)
+                                } else {
+                                    product
+                                }
+                            }
+                    }
+
+                    // Tunggu semua Future selesai
+                    Tasks.whenAllComplete(productFutures)
+                        .addOnSuccessListener {
+                            // Ambil hasil dan filter yang sukses
+                            val products = productFutures.mapNotNull { future ->
+                                future.result as? Product
+                            }
+
+                            // Filter dan sort berdasarkan lokasi
+                            val filteredAndSortedProducts = products
+                                .map { product ->
+                                    val distance = calculateDistance(
+                                        userLat, userLong,
+                                        product.location.latitude,
+                                        product.location.longitude
+                                    )
+                                    Pair(product, distance)
+                                }
+                                .filter { (_, distance) ->
+                                    distance <= maxDistance
+                                }
+                                .sortedBy { (_, distance) ->
+                                    distance
+                                }
+                                .map { (product, _) -> product }
+
+                            onSuccess(filteredAndSortedProducts)
+                        }
+                        .addOnFailureListener { e ->
+                            onError(e.message ?: "Gagal memproses data produk")
+                        }
+
+                } catch (e: Exception) {
+                    onError(e.message ?: "Terjadi kesalahan")
+                }
+            }
+            .addOnFailureListener { e ->
+                onError(e.message ?: "Gagal mengambil data produk")
+            }
+    }
+
+    fun fetchRandomProducts(
+        limit: Long = 10,
+        onSuccess: (List<Product>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        // Ambil semua produk terlebih dahulu
+        productsCollection
+            .get()
+            .addOnSuccessListener { documents ->
+                try {
+                    // Konversi documents ke list dan acak urutannya
+                    val allProducts = documents.toList().shuffled()
+
+                    // Ambil sejumlah produk sesuai limit
+                    val randomDocs = allProducts.take(limit.toInt())
+
+                    // Proses untuk mendapatkan thumbnail dari subcollection media
+                    val productFutures = randomDocs.mapNotNull { doc ->
+                        val product = doc.toObject(Product::class.java)
+                        doc.reference.collection("media")
+                            .limit(1)
+                            .get()
+                            .continueWith { mediaSnapshot ->
+                                if (!mediaSnapshot.isSuccessful) {
+                                    return@continueWith product
+                                }
+
+                                val media = mediaSnapshot.result?.documents?.firstOrNull()
+                                    ?.toObject(ProductMedia::class.java)
+
+                                if (media != null) {
+                                    product.copy(thumbnail = media.url)
+                                } else {
+                                    product
+                                }
+                            }
+                    }
+
+                    // Tunggu semua Future selesai
+                    Tasks.whenAllComplete(productFutures)
+                        .addOnSuccessListener {
+                            val products = productFutures.mapNotNull { future ->
+                                future.result as? Product
+                            }
+                            onSuccess(products)
+                        }
+                        .addOnFailureListener { e ->
+                            onError(e.message ?: "Gagal memproses data produk")
+                        }
+
+                } catch (e: Exception) {
+                    onError(e.message ?: "Terjadi kesalahan")
+                }
+            }
+            .addOnFailureListener { e ->
+                onError(e.message ?: "Gagal mengambil data produk")
+            }
+    }
+
+    fun fetchMyProducts(
+        onLoading: () -> Unit = {},
+        onSuccess: (List<Product>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        onLoading()
+
+        // Dapatkan current user ID
+        val currentUserId = Firebase.auth.currentUser?.uid ?: run {
+            onError("User tidak ditemukan")
+            return
+        }
+
+        productsCollection
+            .whereEqualTo("sellerId", currentUserId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { documents ->
+                // Proses untuk mendapatkan thumbnail dari subcollection media
+                val productFutures = documents.mapNotNull { doc ->
+                    val product = doc.toObject(Product::class.java)
+                    doc.reference.collection("media")
+                        .limit(1)
+                        .get()
+                        .continueWith { mediaSnapshot ->
+                            if (!mediaSnapshot.isSuccessful) {
+                                return@continueWith product
+                            }
+
+                            val media = mediaSnapshot.result?.documents?.firstOrNull()
+                                ?.toObject(ProductMedia::class.java)
+
+                            if (media != null) {
+                                product.copy(thumbnail = media.url)
+                            } else {
+                                product
+                            }
+                        }
+                }
+
+                Tasks.whenAllComplete(productFutures)
+                    .addOnSuccessListener {
+                        val products = productFutures.mapNotNull { future ->
+                            future.result as? Product
+                        }
+                        onSuccess(products)
+                    }
+                    .addOnFailureListener { e ->
+                        onError(e.message ?: "Gagal memproses data produk")
+                    }
+            }
+            .addOnFailureListener { e ->
+                onError(e.message ?: "Gagal mengambil data produk")
+            }
+    }
+
+    fun deleteProduct(
+        productId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        productsCollection.document(productId)
+            .delete()
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                onError(e.message ?: "Gagal menghapus produk")
+            }
+    }
 
     fun addCategoryToFirestore(
         categories: List<Map<String, Any>>,

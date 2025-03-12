@@ -52,7 +52,7 @@ fun PublicComplaints() {
                             .clip(shape = RoundedCornerShape(12.dp))
                             .background(
                                 color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(
-                                    alpha = 0.3f
+                                    alpha = 0.8f
                                 )
                             ),
 

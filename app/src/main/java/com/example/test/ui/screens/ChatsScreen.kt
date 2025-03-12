@@ -56,7 +56,6 @@ import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
-import com.example.test.ui.dataTest.products
 import com.example.test.ui.dataTest.sampleChats
 import com.example.test.ui.dataType.Chat
 import com.example.test.ui.viewModels.ChatViewModel

@@ -2,46 +2,26 @@ package com.example.test.ui.screens
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +29,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -57,116 +39,219 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.test.R
 import com.example.test.ui.dataType.Branch
 import com.example.test.ui.dataType.Member
 import com.example.test.ui.viewModels.MemberViewModel
-import com.google.gson.Gson
+import com.google.common.io.Files.append
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DigitalCardScreen(
-    navController: NavHostController,
-    paddingValues: PaddingValues,
-    userId: String,
-    memberViewModel: MemberViewModel = viewModel()
+   navController: NavHostController,
+   paddingValues: PaddingValues,
+   userId: String,
+   memberViewModel: MemberViewModel = viewModel()
 ) {
-    var isLoading by remember { mutableStateOf(true) }
-    var member by remember { mutableStateOf<Member?>(null) }
-    var branch by remember { mutableStateOf<Branch?>(null) }
+   var isLoading by remember { mutableStateOf(true) }
+   var member by remember { mutableStateOf<Member?>(null) }
+   var branch by remember { mutableStateOf<Branch?>(null) }
+   var showActionDialog by remember { mutableStateOf(false) }
+   var showShareOptions by remember { mutableStateOf(false) }
+   var isFront by remember { mutableStateOf(true) }
+   val context = LocalContext.current
 
-    LaunchedEffect(userId) {
-        memberViewModel.fetchMember(userId) { fetchedMember, fetchedBranch ->
-            member = fetchedMember
-            branch = fetchedBranch
-            isLoading = false
-        }
-    }
+   LaunchedEffect(userId) {
+       memberViewModel.fetchMember(userId) { fetchedMember, fetchedBranch ->
+           member = fetchedMember
+           branch = fetchedBranch
+           isLoading = false
+       }
+   }
 
-    // State untuk kontrol rotasi kartu
-    var isFront by remember { mutableStateOf(true) }
-    val rotation = animateFloatAsState(
-        targetValue = if (isFront) 0f else 180f,
-        animationSpec = tween(durationMillis = 600)
-    )
+   Scaffold(
+       topBar = {
+           TopAppBar(
+               title = { Text("Kartu Digital") },
+               colors = TopAppBarDefaults.topAppBarColors(
+                   containerColor = MaterialTheme.colorScheme.background,
+                   titleContentColor = MaterialTheme.colorScheme.onBackground,
+                   navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                   actionIconContentColor = MaterialTheme.colorScheme.onBackground
+               ),
+               navigationIcon = {
+                   IconButton(onClick = { navController.popBackStack() }) {
+                       Icon(
+                           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                           contentDescription = "Back"
+                       )
+                   }
+               },
+               actions = {
+                   IconButton(onClick = { showShareOptions = true }) {
+                       Icon(
+                           imageVector = Icons.Default.Share,
+                           contentDescription = "Share"
+                       )
+                   }
+                   IconButton(onClick = { showActionDialog = true }) {
+                       Icon(
+                           imageVector = Icons.Default.Share,
+                           contentDescription = "Download"
+                       )
+                   }
+               }
+           )
+       }
+   ) { innerPadding ->
+       Box(
+           modifier = Modifier
+               .fillMaxSize()
+               .padding(innerPadding)
+               .background(MaterialTheme.colorScheme.background),
+           contentAlignment = Alignment.Center
+       ) {
+           Column(
+               horizontalAlignment = Alignment.CenterHorizontally,
+               modifier = Modifier.padding(16.dp)
+           ) {
+               AnimatedVisibility(
+                   visible = !isLoading && member != null,
+                   enter = fadeIn(),
+                   exit = fadeOut()
+               ) {
+                   Row(
+                       modifier = Modifier
+                           .fillMaxWidth()
+                           .padding(bottom = 16.dp),
+                       horizontalArrangement = Arrangement.Center,
+                       verticalAlignment = Alignment.CenterVertically
+                   ) {
+                       Text(
+                           text = "Tap atau klik kartu untuk membalik",
+                           style = MaterialTheme.typography.bodyMedium,
+                           color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                       )
+                   }
+               }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Kartu Digital") },
-                colors = TopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                        )
-                    }
-                },
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Teks di atas kartu
-                if(member != null) {
-                    Text(
-                        text = "Tap Kartu untuk melihat sebaliknya",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
+               if (isLoading) {
+                   CircularProgressIndicator(
+                       modifier = Modifier.size(48.dp),
+                       color = MaterialTheme.colorScheme.primary
+                   )
+               } else if (member != null) {
+                   val rotation = animateFloatAsState(
+                       targetValue = if (isFront) 0f else 180f,
+                       animationSpec = tween(
+                           durationMillis = 400,
+                           easing = FastOutSlowInEasing
+                       )
+                   )
 
-                if (member != null) {
-                    Card(
-                        modifier = Modifier
-                            .width(300.dp)
-                            .height(480.dp)
-                            .graphicsLayer {
-                                rotationY = rotation.value
-                                cameraDistance = 12f * density
-                            }
-                            .clickable { isFront = !isFront },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            if (rotation.value <= 90f) {
-                                // Depan Kartu
-                                FrontCard(member = member!!)
-                            } else {
-                                // Belakang Kartu
-                                BackCard(member = member!!)
-                            }
-                        }
-                    }
-                } else {
-                    CircularProgressIndicator()
-                }
-            }
-        }
+                   val density = LocalDensity.current
 
-    }
+                   Card(
+                       modifier = Modifier
+                           .width(300.dp)
+                           .height(480.dp)
+                           .graphicsLayer {
+                               rotationY = rotation.value
+                               cameraDistance = 8f * density.density
+                           }
+                           .clickable { isFront = !isFront },
+                       elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                       shape = RoundedCornerShape(16.dp)
+                   ) {
+                       Box(modifier = Modifier.fillMaxSize()) {
+                           if (rotation.value <= 90f) {
+                               FrontCard(member = member!!)
+                           } else {
+                               BackCard(member = member!!)
+                           }
+                       }
+                   }
+               }
+           }
+       }
+
+       if (showActionDialog) {
+           AlertDialog(
+               onDismissRequest = { showActionDialog = false },
+               title = { Text("Pilih Format") },
+               text = { Text("Pilih format kartu yang ingin Anda unduh") },
+               confirmButton = {
+                   Button(onClick = {
+                       // TODO: Implement PDF download
+                       showActionDialog = false
+                   }) {
+                       Icon(
+                           imageVector = Icons.Default.Lock,
+                           contentDescription = null,
+                           modifier = Modifier.size(18.dp)
+                       )
+                       Spacer(modifier = Modifier.width(8.dp))
+                       Text("Unduh PDF")
+                   }
+               },
+               dismissButton = {
+                   OutlinedButton(onClick = {
+                       // TODO: Implement Image download
+                       showActionDialog = false
+                   }) {
+                       Icon(
+                           imageVector = Icons.Default.Lock,
+                           contentDescription = null,
+                           modifier = Modifier.size(18.dp)
+                       )
+                       Spacer(modifier = Modifier.width(8.dp))
+                       Text("Unduh Gambar")
+                   }
+               }
+           )
+       }
+
+       if (showShareOptions) {
+           AlertDialog(
+               onDismissRequest = { showShareOptions = false },
+               title = { Text("Bagikan Kartu") },
+               text = { Text("Pilih cara berbagi kartu Anda") },
+               confirmButton = {
+                   Button(onClick = {
+                       // TODO: Implement PDF sharing
+                       showShareOptions = false
+                   }) {
+                       Icon(
+                           imageVector = Icons.Default.Share,
+                           contentDescription = null,
+                           modifier = Modifier.size(18.dp)
+                       )
+                       Spacer(modifier = Modifier.width(8.dp))
+                       Text("Bagikan PDF")
+                   }
+               },
+               dismissButton = {
+                   OutlinedButton(onClick = {
+                       // TODO: Implement Image sharing
+                       showShareOptions = false
+                   }) {
+                       Icon(
+                           imageVector = Icons.Default.Share,
+                           contentDescription = null,
+                           modifier = Modifier.size(18.dp)
+                       )
+                       Spacer(modifier = Modifier.width(8.dp))
+                       Text("Bagikan Gambar")
+                   }
+               }
+           )
+       }
+   }
 }
+
+// Keep existing FrontCard and BackCard components
 
 @Composable
 fun FrontCard(member: Member) {
@@ -350,19 +435,15 @@ fun CardInfoItem(label: String, value: String) {
         val matches = boldPattern.findAll(value)
 
         matches.forEach { match ->
-            // Teks sebelum teks bold
             append(value.substring(currentIndex, match.range.first))
 
-            // Teks bold
             withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                 append(match.groupValues[1])
             }
 
-            // Update indeks
             currentIndex = match.range.last + 1
         }
 
-        // Teks setelah teks bold (jika ada)
         if (currentIndex < value.length) {
             append(value.substring(currentIndex))
         }

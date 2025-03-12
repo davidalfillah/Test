@@ -17,13 +17,15 @@ import com.example.test.ui.dataType.Member
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.storage
 import java.io.ByteArrayOutputStream
+import java.util.UUID
 
-open class MemberViewModel : ViewModel() {
+class MemberViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
@@ -34,7 +36,7 @@ open class MemberViewModel : ViewModel() {
         _member.value = member
     }
 
-    fun uploadImageToFirebase(
+    private fun uploadImageToFirebase(
         context: Context, uri: Uri, label: String,
         onSuccess: (String) -> Unit, onFailure: (String) -> Unit
     ) {
@@ -59,6 +61,65 @@ open class MemberViewModel : ViewModel() {
             }
     }
 
+    private fun saveFileToSubCollectionMembers(
+        db: FirebaseFirestore,
+        memberId: String,
+        fileId: String,
+        fileName: String,
+        fileUrl: String,
+        fileType: String,
+        onSuccess: () -> Unit
+    ) {
+        val fileData = mapOf(
+            "fileName" to fileName,
+            "fileType" to fileType,
+            "fileUrl" to fileUrl
+        )
+
+        db.collection("members").document(memberId)
+            .collection("files").document(fileId)
+            .set(fileData)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Gagal menyimpan file: ${e.message}")
+            }
+    }
+
+    fun getFilesByMemberId(
+        memberId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        val db = FirebaseFirestore.getInstance()
+
+        // Pastikan memberId tidak kosong sebelum mengambil data
+        if (memberId.isBlank()) {
+            onFailure("Member ID tidak valid")
+            return
+        }
+
+        db.collection("members")
+            .document(memberId)  // Pastikan menggunakan "document(memberId)" dengan benar
+            .collection("files")  // Subkoleksi "files"
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val fileList = mutableListOf<Map<String, Any>>()
+                for (document in querySnapshot) {
+                    fileList.add(document.data)
+                }
+                onSuccess(fileList)
+            }
+            .addOnFailureListener { exception ->
+                onFailure("Gagal mengambil data file: ${exception.message}")
+            }
+    }
+
+
+
+
+
+
+
     fun registerMember(
         context: Context,
         fotoUri: Uri, ktpUri: Uri,
@@ -70,21 +131,17 @@ open class MemberViewModel : ViewModel() {
     ) {
         val db = FirebaseFirestore.getInstance()
 
-        // 1️⃣ Cek apakah NIK sudah terdaftar
         db.collection("members").whereEqualTo("nik", nik).get()
             .addOnSuccessListener { documents ->
                 if (!documents.isEmpty) {
                     onResult(false, "NIK sudah terdaftar!")
                     return@addOnSuccessListener
                 }
-
-                // 2️⃣ Upload Foto KTP
                 uploadImageToFirebase(context, ktpUri, "KTP",
                     onSuccess = { ktpUrl ->
                         // 3️⃣ Upload Foto KTA
                         uploadImageToFirebase(context, fotoUri, "KTA",
                             onSuccess = { fotoUrl ->
-
                                 // 4️⃣ Cari atau buat cabang berdasarkan lokasi
                                 findOrCreateBranchHierarchy(subDistrict, city, province) { branchId, branchLevel ->
 
@@ -116,12 +173,22 @@ open class MemberViewModel : ViewModel() {
                                             fotoUrl = fotoUrl,
                                             ktpUrl = ktpUrl
                                         )
-
-                                        // 6️⃣ Simpan Data Member
                                         db.collection("members").document(memberId)
                                             .set(newMember)
-                                            .addOnSuccessListener { onResult(true, "Pendaftaran berhasil!") }
-                                            .addOnFailureListener { onResult(false, "Pendaftaran gagal!") }
+                                            .addOnSuccessListener {
+                                                // 7️⃣ Simpan file KTP ke dalam sub-koleksi
+                                                val ktpFileId = UUID.randomUUID().toString()
+                                                saveFileToSubCollectionMembers(db, memberId, ktpFileId, "KTP", ktpUrl, "KTP") {
+                                                    // 8️⃣ Simpan file KTA ke dalam sub-koleksi
+                                                    val ktaFileId = UUID.randomUUID().toString()
+                                                    saveFileToSubCollectionMembers(db, memberId, ktaFileId, "KTA", fotoUrl, "KTA") {
+                                                        onResult(true, "Pendaftaran berhasil!")
+                                                    }
+                                                }
+                                            }
+                                            .addOnFailureListener {
+                                                onResult(false, "Pendaftaran gagal!")
+                                            }
                                     }
                                 }
                             },
@@ -139,7 +206,9 @@ open class MemberViewModel : ViewModel() {
     }
 
 
-    open fun fetchMember(userId: String, onResult: (Member?, Branch?) -> Unit) {
+
+
+     fun fetchMember(userId: String, onResult: (Member?, Branch?) -> Unit) {
         val db = FirebaseFirestore.getInstance()
 
         db.collection("members")
@@ -156,7 +225,6 @@ open class MemberViewModel : ViewModel() {
                 if (memberDoc != null) {
                     val member = memberDoc.toObject(Member::class.java)
 
-                    // 🔹 Jika member punya branchId, ambil data cabangnya
                     if (!member?.branchId.isNullOrEmpty()) {
                         db.collection("branches").document(member!!.branchId)
                             .get()
@@ -168,24 +236,27 @@ open class MemberViewModel : ViewModel() {
                                 onResult(
                                     member,
                                     null
-                                ) // ❌ Jika gagal mengambil branch, tetap kirim member
+                                )
                             }
                     } else {
-                        onResult(member, null) // 🔹 Jika member tidak punya branch
+                        onResult(member, null)
                     }
                 } else {
-                    onResult(null, null) // ❌ Jika member tidak ditemukan
+                    onResult(null, null)
                 }
             }
             .addOnFailureListener {
-                onResult(null, null) // ❌ Jika query gagal, kembalikan null
+                onResult(null, null)
             }
     }
 
 
 
 
+
     fun registerUmkm(
+        context: Context,
+        memberImageUri: Uri,
         memberId: String,
         name: String,
         businessType: String,
@@ -199,37 +270,55 @@ open class MemberViewModel : ViewModel() {
         contact: String,
         onResult: (Boolean, String) -> Unit
     ) {
-        generateUmkmId { umkmId ->
-            val newUmkm = hashMapOf(
-                "umkmId" to umkmId,
-                "memberId" to memberId,
-                "name" to name,
-                "businessType" to businessType,
-                "description" to description,
-                "address" to mapOf(
-                    "street" to street,
-                    "village" to village,
-                    "subDistrict" to subDistrict,
-                    "city" to city,
-                    "province" to province,
-                    "postalCode" to postalCode
-                ),
-                "contact" to contact,
-                "createdAt" to System.currentTimeMillis()
-            )
+        uploadImageToFirebase(
+            context,
+            memberImageUri,
+            "umkm",
+            onSuccess = { imageUrl ->
+                generateUmkmId { umkmId ->
+                    val newUmkm = hashMapOf(
+                        "umkmId" to umkmId,
+                        "ownerId" to memberId,
+                        "name" to name,
+                        "businessType" to businessType,
+                        "description" to description,
+                        "imageUrl" to imageUrl,
+                        "address" to mapOf(
+                            "street" to street,
+                            "village" to village,
+                            "subDistrict" to subDistrict,
+                            "city" to city,
+                            "province" to province,
+                            "postalCode" to postalCode
+                        ),
+                        "contact" to contact,
+                        "createdAt" to Timestamp.now(),
+                    )
 
-            db.collection("umkm").document(umkmId).set(newUmkm)
-                .addOnSuccessListener {
-                    db.collection("members").document(memberId)
-                        .update(
-                            "umkmIds",
-                            com.google.firebase.firestore.FieldValue.arrayUnion(umkmId)
-                        )
-                        .addOnSuccessListener { onResult(true, "UMKM berhasil didaftarkan!") }
-                        .addOnFailureListener { onResult(false, "Gagal memperbarui data member!") }
+                    db.collection("umkm").document(umkmId).set(newUmkm)
+                        .addOnSuccessListener {
+                            db.collection("members").document(memberId)
+                                .update(
+                                    mapOf(
+                                        "umkmIds" to FieldValue.arrayUnion(umkmId),
+                                    )
+                                )
+                                .addOnSuccessListener { 
+                                    onResult(true, "UMKM berhasil didaftarkan!")
+                                }
+                                .addOnFailureListener { 
+                                    onResult(false, "Gagal memperbarui data member!")
+                                }
+                        }
+                        .addOnFailureListener { 
+                            onResult(false, "Gagal mendaftarkan UMKM!")
+                        }
                 }
-                .addOnFailureListener { onResult(false, "Gagal mendaftarkan UMKM!") }
-        }
+            },
+            onFailure = { error ->
+                onResult(false, "Gagal mengupload gambar: $error")
+            }
+        )
     }
 
 

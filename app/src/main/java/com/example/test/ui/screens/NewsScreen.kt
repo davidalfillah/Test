@@ -1,13 +1,23 @@
 package com.example.test.ui.screens
 
 import android.util.Log
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -29,15 +39,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil3.compose.AsyncImage
 import com.example.test.ui.components.ListComponentNews
 import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentNews
+import com.example.test.ui.components.formatTimeAgo
 import com.example.test.ui.dataType.News
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
@@ -55,45 +72,77 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
     var error by remember { mutableStateOf<String?>(null) }
     var selectedTabIndex by remember { mutableStateOf(0) }
 
+    var isLoadingMore by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+
     val adViewModel = AdViewModel()
     val newsViewModel: NewsViewModel = viewModel()
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastIndex ->
+                if (lastIndex != null && !isLoadingMore && !isLoading) {
+                    val totalItems = newsList.size
+                    if (lastIndex >= totalItems - 2) {
+                        isLoadingMore = true
+                        newsViewModel.fetchNews(
+                            isLoadMore = true,
+                            onSuccess = { moreNews ->
+                                if (moreNews.isEmpty()) {
+                                    // Tidak ada data baru, set isLoadingMore false
+                                    isLoadingMore = false
+                                } else {
+                                    newsList = newsList + moreNews
+                                    isLoadingMore = false
+                                }
+                            },
+                            onError = { errorMessage ->
+                                error = errorMessage
+                                isLoadingMore = false
+                            }
+                        )
+                    }
+                }
+            }
+    }
 
 
     LaunchedEffect(Unit) {
         newsViewModel.fetchNews(
+            isLoadMore = false,
             onLoading = { isLoading = true },
             onSuccess = { fetchedNews ->
                 newsList = fetchedNews
                 isLoading = false
                 error = null
-                newsViewModel.fetchTrendingNews(
-                    onLoading = { isLoading = true },
-                    onSuccess = { fetchedTrendingNews ->
-                        // Filter trendingNews agar tidak ada yang sudah di latestNewsList
-                        val latestIds = latestNewsList.map { it.id }.toSet()
-                        trendingNewsList = fetchedTrendingNews.filter { it.id !in latestIds }
-                        isLoading = false
-                        error = null
-                    },
-                    onError = { errorMessage ->
-                        error = errorMessage
-                        isLoading = false
-                    }
-                )
-                newsViewModel.fetchLatestNews(
-                    onLoading = { isLoading = true },
-                    onSuccess = { fetchedLatestNews ->
-                        // Filter latestNews agar tidak ada yang sudah di trendingNewsList
-                        val trendingIds = trendingNewsList.map { it.id }.toSet()
-                        latestNewsList = fetchedLatestNews.filter { it.id !in trendingIds }
-                        isLoading = false
-                        error = null
-                    },
-                    onError = { errorMessage ->
-                        error = errorMessage
-                        isLoading = false
-                    }
-                )
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+                isLoading = false
+            }
+        )
+        newsViewModel.fetchTrendingNews(
+            onLoading = { isLoading = true },
+            onSuccess = { fetchedTrendingNews ->
+                // Filter trendingNews agar tidak ada yang sudah di latestNewsList
+                val latestIds = latestNewsList.map { it.id }.toSet()
+                trendingNewsList = fetchedTrendingNews.filter { it.id !in latestIds }
+                isLoading = false
+                error = null
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+                isLoading = false
+            }
+        )
+        newsViewModel.fetchLatestNews(
+            onLoading = { isLoading = true },
+            onSuccess = { fetchedLatestNews ->
+                // Filter latestNews agar tidak ada yang sudah di trendingNewsList
+                val trendingIds = trendingNewsList.map { it.id }.toSet()
+                latestNewsList = fetchedLatestNews.filter { it.id !in trendingIds }
+                isLoading = false
+                error = null
             },
             onError = { errorMessage ->
                 error = errorMessage
@@ -191,46 +240,140 @@ fun NewsScreen(navController: NavHostController, paddingValues: PaddingValues, )
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                 ) {
                     when (selectedTabIndex) {
                         0 -> {
-                            // Tab "Semua" - Konten semua berita
-                            SlideComponentBanner(
-                                items = ads.value,
-                                isLoading = isLoading,
-                                onItemClick = { actionValue ->
-                                    Log.d("Banner Clicked", "Aksi: $actionValue")
-                                },
-                            )
-                            if(latestNewsList.isNotEmpty()) {
-                                SlideComponentNews(
-                                    items = latestNewsList,
-                                    onItemClick = { id ->
-                                        navController.navigate("news_detail/${id}")
-                                    },
-                                    navController = navController,
-                                    title = "Berita Terbaru",
-                                )
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                item {
+                                    SlideComponentBanner(
+                                        items = ads.value,
+                                        isLoading = isLoading,
+                                        onItemClick = { actionValue ->
+                                            Log.d("Banner Clicked", "Aksi: $actionValue")
+                                        },
+                                    )
+                                }
+
+                                // Latest news section
+                                if (latestNewsList.isNotEmpty()) {
+                                    item {
+                                        SlideComponentNews(
+                                            items = latestNewsList,
+                                            onItemClick = { id -> navController.navigate("news_detail/${id}") },
+                                            navController = navController,
+                                            title = "Berita Terbaru",
+                                        )
+                                    }
+                                }
+
+                                // Trending news section
+                                if (trendingNewsList.isNotEmpty()) {
+                                    item {
+                                        SlideComponentNews(
+                                            items = trendingNewsList,
+                                            onItemClick = { id -> navController.navigate("news_detail/${id}") },
+                                            navController = navController,
+                                            title = "Berita Populer",
+                                        )
+                                    }
+                                }
+
+                                item {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "Semua Berita",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleLarge,
+                                        )
+                                    }
+                                }
+
+                                // All news items
+                                items(newsList) { news ->
+                                    Row(
+                                        modifier = Modifier
+                                            .clickable {
+                                                navController.navigate("news_detail/${news.id}")
+                                            }
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically // Pastikan sejajar
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.weight(1f) // Memberi ruang fleksibel untuk teks
+                                        ) {
+                                            Text(
+                                                text = news.title,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Row(
+                                                modifier = Modifier.padding(top = 8.dp)
+                                            ) {
+                                                Text(
+                                                    news.author.name,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    formatTimeAgo(news.createdAt),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(16.dp))
+
+                                        AsyncImage(
+                                            model = news.thumbnailUrl,
+                                            contentDescription = news.title,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(width = 120.dp, height = 80.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                    }
+                                }
+
+                                // Loading indicator at bottom
+                                item {
+                                    if (isLoadingMore) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    } else if (newsViewModel.isLastPage) { // Tambahkan properti isLastPage sebagai public di ViewModel
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "Tidak ada berita lagi",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                            if(trendingNewsList.isNotEmpty()) {
-                                SlideComponentNews(
-                                    items = trendingNewsList,
-                                    onItemClick = { id ->
-                                        navController.navigate("news_detail/${id}")
-                                    },
-                                    navController = navController,
-                                    title = "Berita Populer",
-                                )
-                            }
-                            ListComponentNews(
-                                items = newsList,
-                                onItemClick = { id ->
-                                    navController.navigate("news_detail/${id}")
-                                },
-                                navController = navController,
-                                title = "Semua Berita"
-                            )
 
                         }
                         1 -> {

@@ -2,6 +2,7 @@ package com.example.test.ui.screens
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -89,6 +91,12 @@ fun MemberProfileScreen(
                         )
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
             )
         }
     ) { innerPadding ->
@@ -101,7 +109,7 @@ fun MemberProfileScreen(
                     start = 16.dp,
                     end = 16.dp
                 )
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
         ) {
             if (member != null) {
                 Card(
@@ -110,7 +118,7 @@ fun MemberProfileScreen(
                         .padding(vertical = 8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Column(
@@ -157,7 +165,8 @@ fun MemberProfileScreen(
                 // Informasi Cabang
                 branch?.let { b ->
                     ProfileSection(title = "Cabang") {
-                        ProfileItem("Nama Cabang", b.name)
+                        ProfileItem("Nama Cabang", "${b.level} ${b.name}")
+                        ProfileItem("ID Cabang", b.branchId)
                     }
                 }
             } else {
@@ -190,11 +199,15 @@ fun ProfileSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
+    OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+
     ) {
         Column(
             modifier = Modifier

@@ -13,6 +13,7 @@ import com.example.test.ui.dataType.NewsContent
 import com.example.test.ui.screens.User
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
@@ -48,6 +49,10 @@ class NewsViewModel : ViewModel() {
     private val newsCollection = db.collection("news")
     private val usersCollection = db.collection("users")
     private val listeners = mutableListOf<ListenerRegistration>()
+
+    private val pageSize = 10L // Jumlah item per halaman
+    private var lastVisibleNews: DocumentSnapshot? = null
+    var isLastPage = false
 
     fun migrateNewsData() {
         val db = FirebaseFirestore.getInstance()
@@ -230,22 +235,50 @@ class NewsViewModel : ViewModel() {
         listeners.add(listener)
     }
 
-    /** Mengambil Semua Berita */
+
     fun fetchNews(
+        isLoadMore: Boolean = false,
         onLoading: () -> Unit = {},
         onSuccess: (List<News>) -> Unit,
         onError: (String) -> Unit
     ) {
+        // Jika sudah di halaman terakhir, langsung return
+        if (isLastPage && isLoadMore) {
+            onSuccess(emptyList()) // Mengembalikan list kosong untuk menandakan tidak ada data baru
+            return
+        }
+
         onLoading()
-        val listener = newsCollection.orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    onError(error.message ?: "Gagal mengambil berita")
-                    return@addSnapshotListener
-                }
-                val newsList = snapshot?.documents?.mapNotNull { it.toObject(News::class.java) } ?: emptyList()
-                onSuccess(newsList)
+        var query = newsCollection
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(pageSize)
+
+        if (isLoadMore && lastVisibleNews != null) {
+            query = query.startAfter(lastVisibleNews!!)
+        } else if (isLoadMore) {
+            onSuccess(emptyList())
+            return
+        }
+
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                onError(error.message ?: "Gagal mengambil berita")
+                return@addSnapshotListener
             }
+
+            val documents = snapshot?.documents ?: emptyList()
+            val newsList = documents.mapNotNull { it.toObject(News::class.java) }
+
+            // Update pagination state
+            if (documents.isNotEmpty()) {
+                lastVisibleNews = documents[documents.size - 1]
+                isLastPage = documents.size < pageSize
+            } else {
+                isLastPage = true
+            }
+
+            onSuccess(newsList)
+        }
         listeners.add(listener)
     }
 

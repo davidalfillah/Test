@@ -1,5 +1,6 @@
 package com.example.test.ui.screens
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -68,28 +69,19 @@ import com.example.test.ui.components.SlideComponentNews
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.components.UserProfileImage
 import com.example.test.ui.dataTest.categories
-import com.example.test.ui.dataTest.products
 import com.example.test.ui.dataTest.subcategories
 import com.example.test.ui.dataType.News
 import com.example.test.ui.dataType.NewsContent
+import com.example.test.ui.dataType.Product
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
 import com.example.test.ui.viewModels.NewsViewModel
 import com.example.test.ui.viewModels.ProductViewModel
-import com.example.test.ui.viewModels.images
-import com.example.test.ui.viewModels.product
-import com.example.test.ui.viewModels.variants
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
 
-
-data class Product(
-    val image: String,       // ID Gambar dari drawable
-    val title: String,    // Judul donasi
-    val price: Int,      // Target donasi (contoh: Rp10.000.000)
-    val location: String,
-)
 
 data class User(
     val uid: String = "",
@@ -115,6 +107,8 @@ fun HomeScreen(
     val isProfileComplete by authViewModel.isProfileComplete.collectAsState()
     val adViewModel = AdViewModel()
     val newsViewModel: NewsViewModel = viewModel()
+    val productViewModel: ProductViewModel = viewModel()
+    var products by remember { mutableStateOf(emptyList<Product>()) }
 
     var error by remember { mutableStateOf<String?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -126,6 +120,15 @@ fun HomeScreen(
                 popUpTo("home") { inclusive = true }
             }
         }
+        productViewModel.fetchRandomProducts(
+            limit = 10,
+            onSuccess = { productsIt ->
+                products = productsIt
+            },
+            onError = { errorMessage ->
+                error = errorMessage
+            }
+        )
 
     }
 
@@ -160,13 +163,6 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary
         ), actions = { // Tambahkan aksi di kanan atas
-            IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
-                Icon(
-                    imageVector = Icons.Default.Favorite, // Ikon lonceng
-                    contentDescription = "Notifikasi",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
             IconButton(onClick = { /* Aksi ketika tombol notifikasi ditekan */ }) {
                 Icon(
                     imageVector = Icons.Default.Notifications, // Ikon lonceng
@@ -344,7 +340,7 @@ fun HomeScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            text = "Rp.20.000",
+                                            text = "Rp.10.000",
                                             fontWeight = FontWeight.Black,
                                             style = MaterialTheme.typography.titleLarge,
                                         )
@@ -395,7 +391,7 @@ fun HomeScreen(
                                         .clickable {
                                             when (index) {
                                                 0 -> navController.navigate("news")
-                                                1 -> navController.navigate("registerUmkm")
+                                                1 -> navController.navigate("umkm")
                                                 2 -> user?.let {
                                                     authViewModel.checkMemberStatus(it.uid) { isMember ->
                                                         if (isMember) {
@@ -549,7 +545,7 @@ fun HomeScreen(
                                 Column {
 
                                     Text(
-                                        text = "Tentang GRIB?",
+                                        text = "Tentang GRIB",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -557,7 +553,7 @@ fun HomeScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         lineHeight = 13.sp,
-                                        text = "Yuk cari tahu tentang GRIB"
+                                        text = "Informasi lebih lanjut tentang GRIB"
                                     )
                                 }
                             }
@@ -596,8 +592,9 @@ fun HomeScreen(
 //                        println("Menu yang diklik: $menu")
 //                    }
 //                )
-                SlideComponentProduct(items = products, onItemClick = { menu ->
-                    println("Menu yang diklik: $menu")
+                SlideComponentProduct(items = products, title = "Rekomendasi Produk", moreText = null, onItemClick = { menu ->
+                    val productJson = Uri.encode(Gson().toJson(menu))
+                    navController.navigate("product_detail/${productJson}")
                 })
 
                 if (showBottomSheet) {

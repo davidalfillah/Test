@@ -205,7 +205,11 @@ fun HomeKtaScreen(
                                             navController.navigate("biodataMember/$userId")
                                         }
 
-                                        "Dokumen" -> navController.navigate("dokumenMember/$userId")
+                                        "Dokumen" -> {
+                                            member?.memberId?.let { id ->
+                                                navController.navigate("dokumenMember/$id")
+                                            } ?: Log.e("Navigation", "Member ID is null or empty!")
+                                        }
                                     }
                                 }
                         ) {

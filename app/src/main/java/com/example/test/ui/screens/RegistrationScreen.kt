@@ -246,8 +246,6 @@ fun RegistrationScreen(
                                         .fillMaxSize()
                                         .clip(RoundedCornerShape(8.dp))
                                 )
-
-                                // Tombol Hapus (Icon X)
                                 IconButton(
                                     onClick = { ktpUri = null },
                                     modifier = Modifier
@@ -701,9 +699,14 @@ fun RegistrationScreen(
                                             jobTitle = jobTitle,
                                             context = context
                                         ) { success, message ->
-                                            // Proses selesai, nonaktifkan loading
                                             isRegistering = false
                                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+
+                                            if (success) {
+                                                navController.navigate("homeKta/${it.uid}") {
+                                                    popUpTo("registerGrib") { inclusive = true }
+                                                }
+                                            }
                                         }
                                     }
                                 }

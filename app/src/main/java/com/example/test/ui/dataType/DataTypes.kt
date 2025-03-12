@@ -75,8 +75,10 @@ data class Umkm(
     val description: String = "",
     val address: Address = Address(),
     val contact: String = "",
-    val registrationDate: Long = System.currentTimeMillis(),
-    val status: String = "active"
+    val createdAt: Timestamp = Timestamp.now(),
+    val status: String = "active",
+    val updatedAt: Timestamp = Timestamp.now(),
+    val imageUrl: String? = ""
 )
 
 
@@ -154,43 +156,39 @@ data class Product(
     val categoryId: String = "",
     val subcategoryId: String = "",
     val price: Double = 0.0,
-    val discount: Double = 0.0, // Dalam persen
+    val discount: Double = 0.0,
     val stock: Int = 0,
-    val weight: Double = 0.0, // Dalam kg
-    val dimensions: Dimensions? = null,
     val sellerId: String = "",
     val createdAt: Timestamp = Timestamp.now(),
     val updatedAt: Timestamp = Timestamp.now(),
-    val status: String = "active", // active, out_of_stock, discontinued
-    val rating: Double = 0.0, // Rata-rata rating dari ulasan
-    val soldCount: Int = 0 // Jumlah produk terjual
-)
-
-data class Dimensions(
-    val length: Double = 0.0,
-    val width: Double = 0.0,
-    val height: Double = 0.0
+    val thumbnail: String = "",
+    val status: String = "active",
+    val location: ProductLocation = ProductLocation(),
+    val soldCount: Int = 0,
+    val variants: List<ProductVariant> = emptyList()
 )
 
 data class ProductMedia(
     val id: String = "",
     val url: String = "",
-    val type: String = "image" // "image" atau "video"
+    val type: String = "image",
+    val timestamp: Timestamp = Timestamp.now()
 )
 
 data class ProductVariant(
     val id: String = "",
-    val name: String = "", // Contoh: "Merah - L"
+    val name: String = "",
     val price: Double = 0.0,
-    val stock: Int = 0
+    val stock: Int = 0,
+    val timestamp: Timestamp = Timestamp.now()
 )
 
-data class ProductReview(
+data class ProductComment(
     val id: String = "",
+    val productId: String = "",
     val userId: String = "",
-    val rating: Int = 0, // 1-5
-    val reviewText: String = "",
-    val createdAt: Timestamp = Timestamp.now()
+    val text: String = "",
+    val createdAt: Timestamp? = Timestamp.now(),
 )
 
 data class ProductCategory(
@@ -202,6 +200,14 @@ data class ProductCategory(
 data class Subcategory(
     val id: String = "",
     val name: String = ""
+)
+
+data class ProductLocation(
+    val address: String = "",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val city: String = "",
+    val province: String = ""
 )
 
 

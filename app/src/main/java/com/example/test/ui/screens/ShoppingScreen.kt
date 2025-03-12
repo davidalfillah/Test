@@ -1,5 +1,6 @@
 package com.example.test.ui.screens
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,17 +34,23 @@ import com.example.test.ui.components.SlideComponentBanner
 import com.example.test.ui.components.SlideComponentProduct
 import com.example.test.ui.dataTest.CategoryButtons
 import com.example.test.ui.dataTest.banners
-import com.example.test.ui.dataTest.products
+import com.example.test.ui.dataType.Product
 import com.example.test.ui.dataType.ProductCategory
 import com.example.test.ui.viewModels.Ad
 import com.example.test.ui.viewModels.AdViewModel
 import com.example.test.ui.viewModels.ProductViewModel
+import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValues) {
+fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValues,
+                   userLat: Double,
+                   userLong: Double) {
     val ads = remember { mutableStateOf(emptyList<Ad>()) }
-    val isLoading = remember { mutableStateOf(true) } // Status loading
+    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val lastProduct by remember { mutableStateOf<Product?>(null) }
     val adViewModel = AdViewModel()
     val productViewModel = ProductViewModel()
 
@@ -53,12 +60,30 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
         productViewModel.fetchCategories { result ->
             categories = result
         }
+        productViewModel.fetchProductsByLocationPaginated(
+            userLat = userLat,
+            userLong = userLong,
+            maxDistance = 10.0, // 10km radius
+            lastProduct = lastProduct,
+            onSuccess = { newProducts ->
+                products = if (lastProduct == null) {
+                    newProducts
+                } else {
+                    products + newProducts
+                }
+                isLoading = false
+            },
+            onError = { message ->
+                error = message
+                isLoading = false
+            }
+        )
     }
 
     LaunchedEffect(Unit) {
         adViewModel.getAds { fetchedAds ->
             ads.value = fetchedAds
-            isLoading.value = false // Matikan loading setelah data diambil
+            isLoading = false
         }
     }
 
@@ -78,10 +103,12 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
                             tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                    IconButton(onClick = { /* Aksi ketika tombol pencarian ditekan */ }) {
+                    IconButton(onClick = {
+                        navController.navigate("myProducts")
+                    }) {
                         Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.baseline_checklist_rtl_24),
-                            contentDescription = "Search",
+                            imageVector = ImageVector.vectorResource(R.drawable.baseline_house_siding_24),
+                            contentDescription = "MyProduct",
                             tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -100,7 +127,7 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
             Column() {
                 SlideComponentBanner(
                     items = ads.value,
-                    isLoading = isLoading.value,
+                    isLoading = isLoading,
                     onItemClick = { actionValue ->
                         Log.d("Banner Clicked", "Aksi: $actionValue")
                     }
@@ -120,7 +147,8 @@ fun ShoppingScreen(navController: NavHostController, paddingValues: PaddingValue
                 SlideComponentProduct(
                     items = products,
                     onItemClick = { menu ->
-                        println("Menu yang diklik: $menu")
+                        val productJson = Uri.encode(Gson().toJson(menu))
+                        navController.navigate("product_detail/$productJson")
                     }
                 )
 

@@ -4,6 +4,7 @@ package com.example.test.ui
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -52,8 +54,10 @@ import com.example.test.DashboardScreen
 import com.example.test.R
 import com.example.test.setStatusBarColor
 import com.example.test.ui.dataType.Member
+import com.example.test.ui.dataType.Product
 import com.example.test.ui.screens.AboutGribScreen
 import com.example.test.ui.screens.AccountScreen
+import com.example.test.ui.screens.AddProductScreen
 import com.example.test.ui.screens.ChatDetailScreen
 import com.example.test.ui.screens.ChatsScreen
 import com.example.test.ui.screens.CustomCamera
@@ -70,11 +74,14 @@ import com.example.test.ui.screens.KtpResultScreen
 import com.example.test.ui.screens.KtpScannerScreen
 import com.example.test.ui.screens.LoginScreen
 import com.example.test.ui.screens.MemberProfileScreen
+import com.example.test.ui.screens.MyProductScreen
 import com.example.test.ui.screens.NewsDetailScreen
 import com.example.test.ui.screens.NewsScreen
+import com.example.test.ui.screens.OnboardingUMKMScreen
 import com.example.test.ui.screens.OtpScreen
 import com.example.test.ui.screens.PaymentScreen
 import com.example.test.ui.screens.ProductCategoryScreen
+import com.example.test.ui.screens.ProductDetailScreen
 import com.example.test.ui.screens.ProfileSetupScreen
 import com.example.test.ui.screens.RegistrationScreen
 import com.example.test.ui.screens.RegistrationUmkmScreen
@@ -83,10 +90,14 @@ import com.example.test.ui.screens.ShoppingScreen
 import com.example.test.ui.screens.StatusScreen
 import com.example.test.ui.screens.SuccessScreen
 import com.example.test.ui.screens.TestKtpOcr
+import com.example.test.ui.screens.UmkmDetailScreen
+import com.example.test.ui.screens.UmkmScreen
 import com.example.test.ui.viewModels.ChatViewModel
 import com.example.test.ui.viewModels.MemberViewModel
 import com.example.test.ui.viewModels.NewsViewModel
 import com.example.test.ui.viewModels.PaymentViewModel
+import com.example.test.ui.viewModels.ProductViewModel
+import com.example.test.ui.viewModels.UmkmViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 
@@ -244,6 +255,40 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     var bitmap = capturedBitmap
                 }
             }
+            composable("addProduct") {
+                AddProductScreen(
+                    navController = navController,
+                    viewModel = viewModel<ProductViewModel>()
+                )
+            }
+
+            composable(
+                route = "product_detail/{productJson}",
+                arguments = listOf(
+                    navArgument("productJson") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val productJson = backStackEntry.arguments?.getString("productJson")
+                val product = productJson?.let {
+                    try {
+                        Gson().fromJson(it, Product::class.java)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                if (product != null) {
+                    ProductDetailScreen(
+                        product = product,
+                        onNavigateBack = { navController.navigateUp() },
+                        paddingValues = PaddingValues
+                    )
+                }
+            }
+
+
             composable("donation_input/{title}") { backStackEntry ->
                 val title = backStackEntry.arguments?.getString("title") ?: "general"
                 DonationInputScreen(
@@ -292,12 +337,12 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                     userId = userId
                 )
             }
-            composable("dokumenMember/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            composable("dokumenMember/{memberId}") { backStackEntry ->
+                val memberId = backStackEntry.arguments?.getString("memberId") ?: ""
                 DokumenMemberScreen(
                     navController = navController,
                     paddingValues = PaddingValues,
-                    userId = userId
+                    memberId = memberId
                 )
             }
             composable("homeKta/{userId}") { backStackEntry ->
@@ -342,6 +387,90 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 }
             }
 
+            composable("onboardingUmkm") {
+                OnboardingUMKMScreen(
+                    onNavigateToRegistration = {
+                        navController.navigate("registerUmkm") {
+                            popUpTo("onboardingUmkm") { inclusive = true }
+                        }
+                    },
+                    onFinishOnboarding = { }
+                )
+            }
+
+            composable(
+                route = "umkm_detail/{umkmId}",
+                arguments = listOf(navArgument("umkmId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val umkmId = backStackEntry.arguments?.getString("umkmId")
+                if (umkmId != null) {
+                    UmkmDetailScreen(
+                        navController = navController,
+                        umkmId = umkmId,
+                        viewModel = UmkmViewModel(),
+                        paddingValues = PaddingValues
+                    )
+                }
+            }
+
+            composable("umkm") {
+                val viewModel = remember { UmkmViewModel() }
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                var isLoading by remember { mutableStateOf(true) }
+                val memberViewModel: MemberViewModel = viewModel()
+
+                LaunchedEffect(currentUser) {
+                    if (currentUser == null) {
+                        isLoading = false
+                        navController.navigate("login")
+                        return@LaunchedEffect
+                    }
+
+                    memberViewModel.getMemberByUserId(currentUser.uid) { member ->
+                        if (member == null) {
+                            isLoading = false
+                            return@getMemberByUserId
+                        }
+
+                        Log.d("UmkmScreen", "Member ID: ${member.memberId}")
+                        // Check if member has UMKM
+                        viewModel.hasUmkm(member.memberId) { hasUmkm ->
+                            if (!hasUmkm) {
+                                isLoading = false
+                                navController.navigate("onboardingUmkm") {
+                                    popUpTo("umkm") { inclusive = true }
+                                }
+                            } else {
+                                // If member has UMKM, get their UMKM data
+                                viewModel.getUmkmByOwnerId(member.memberId) { umkmList ->
+                                    Log.d("UmkmScreen", "Fetched UMKM list: $umkmList")
+                                    isLoading = false
+                                }
+                            }
+                        }
+                    }
+                }
+
+                when {
+                    isLoading -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    else -> {
+                        UmkmScreen(
+                            viewModel = viewModel,
+                            navController = navController,
+                            paddingValues = PaddingValues
+                        )
+                    }
+                }
+            }
+
             composable(
                 "registerGrib",
             ) { backStackEntry ->
@@ -374,7 +503,8 @@ fun MainScreen(authViewModel: AuthViewModel = AuthViewModel(AuthRepository())) {
                 SuccessScreen(navController, nextScreen)
             }
             composable("news") { NewsScreen(navController, paddingValues = PaddingValues) }
-            composable("shopping") { ShoppingScreen(navController, paddingValues = PaddingValues) }
+            composable("shopping") { ShoppingScreen(navController, paddingValues = PaddingValues, userLat = 0.0, userLong = 0.0) }
+            composable("myProducts") { MyProductScreen(navController) }
             composable("chat") {
                 ChatsScreen(
                     navController,

@@ -51,7 +51,7 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import com.example.test.R
-import com.example.test.ui.screens.Product
+import com.example.test.ui.dataType.Product
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import dev.chrisbanes.snapper.rememberSnapperFlingBehavior
 import kotlin.math.max
@@ -62,7 +62,7 @@ fun SlideComponentProduct(
     items: List<Product>,
     title: String? = null,
     moreText: String? = "Lihat Semua",
-    onItemClick: (String) -> Unit,
+    onItemClick: (Product) -> Unit,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val cardSize = 160.dp // Ukuran default per card
@@ -115,14 +115,16 @@ fun SlideComponentProduct(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { /* Aksi ketika item diklik */ },
+                                .clickable {
+                                    onItemClick(item)
+                                },
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                             )
                         ) {
                             Column {
                                 AsyncImage(
-                                    model = item.image,
+                                    model = item.thumbnail,
                                     contentDescription = "Gambar dengan Placeholder",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
@@ -131,20 +133,20 @@ fun SlideComponentProduct(
                                 )
                                 Column(modifier = Modifier.padding(8.dp)) {
                                     Text(
-                                        text = "${formatCurrency2(item.price.toLong())}",
+                                        text = formatCurrency2(item.price.toLong()),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = item.title,
+                                        text = item.name,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = item.location,
+                                        text = item.location.city,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
